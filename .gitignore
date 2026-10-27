@@ -1,0 +1,35 @@
+# Secretos y configuración privada
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+config.local.*
+
+# Datos, respaldos y resultados de ejecución
+data/
+output/
+outputs/
+artifacts/
+logs/
+tmp/
+*.csv
+*.tsv
+*.xlsx
+*.parquet
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+*.dump
+*.log
+
+# Entornos y cachés
+.venv/
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+.DS_Store
+Thumbs.db
