@@ -2,8 +2,8 @@
 
 ## Condiciones previas
 
-Confirmar motor, servidor/instancia, nombre y autenticación de la base poblada.
-Confirmar destino SQL Server y espacio autorizado para tablas analíticas.
+Confirmado: PostgreSQL `localhost:5432/idy1102_ep2` como origen y SQL Server
+`localhost/DataRetail360_DW` con autenticación Windows como destino autorizado.
 El SQL entregado describe estructuras con sintaxis PostgreSQL; no demuestra
 qué motor aloja actualmente los datos. Inspeccionar la fuente antes de adaptar
 el diseño y preservar sus tablas originales.
