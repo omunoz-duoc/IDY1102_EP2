@@ -33,3 +33,7 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 Thumbs.db
+
+# Archivos IA
+*.md
+!README.md
