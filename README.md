@@ -14,6 +14,33 @@ SCD, pipeline ETL y almacenamiento analítico del caso DataRetail 360.
   manuales exportados por el estudiante para la simulación del negocio.
 - Desarrollo por etapas con commits locales verificables.
 - Texto explicativo y comentarios por sección del pipeline.
+- Resultado final: tres data marts dependientes del DWH para Comercial,
+  Operaciones y Marketing-Digital.
+
+## Data marts como producto final
+
+El flujo culmina en tres esquemas de SQL Server dentro de `DataRetail360_DW`:
+
+| Esquema | Tabla resumen persistente | Propósito |
+|---|---|---|
+| `dm_comercial` | `ventas_mensuales` | Ventas y devoluciones por mes, sucursal y canal; ticket y análisis de clientes/productos |
+| `dm_operaciones` | `inventario_actual` | Último corte común de stock por producto/sucursal; alertas, histórico y reposición |
+| `dm_marketing` | `campanias_resumen` | Campañas, consentimiento, sesiones y contraste con ventas asociadas a cupón |
+
+Son marts dependientes: cada uno contiene una tabla resumen física y vistas
+de los hechos y dimensiones conformadas del DWH. Las seis tablas de hechos
+siguen integradas en `dw`; las vistas no duplican físicamente esos hechos.
+Marketing y navegación se agrupan para analizar adquisición y conversión,
+mientras que el e-commerce forma parte de la venta omnicanal de Comercial.
+
+La última transformación de `publish()` refresca y concilia los tres marts en
+la misma transacción que el DWH. Las FK se respetan limpiando sus resúmenes
+antes de recargar las dimensiones. Una excepción revierte toda la publicación.
+`ctl.datamart_publicaciones` registra la corrida y conteos por mart.
+
+Las consultas de negocio consumen los esquemas `dm_*`. Los resúmenes y su
+catálogo se exportan a `data/gold/datamarts/`. El diccionario explica su grano,
+las métricas sumables y las tasas que deben recalcularse desde sus componentes.
 
 ## Entorno y ejecución
 
@@ -48,7 +75,9 @@ La ejecución lee aproximadamente 3,4 millones de registros y realiza dos
 publicaciones completas para comprobar idempotencia. Puede tardar varios minutos
 y requiere memoria y espacio para las capas locales. Las tablas `dw` pertenecen
 a esta evaluación; el pipeline renueva sus hechos de forma transaccional y
-conserva las versiones de dimensiones leídas del destino.
+conserva las versiones de dimensiones leídas del destino. Ambas publicaciones
+incluyen los tres marts; las pruebas comparan sus conteos y contenido, comprueban
+la conciliación con el DWH y simulan un fallo para verificar el rollback.
 
 ## Archivos del proyecto
 
