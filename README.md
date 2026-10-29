@@ -14,18 +14,19 @@ SCD, pipeline ETL y almacenamiento analítico del caso DataRetail 360.
   manuales exportados por el estudiante para la simulación del negocio.
 - Desarrollo por etapas con commits locales verificables.
 - Texto explicativo y comentarios por sección del pipeline.
-- Resultado final: tres data marts dependientes del DWH para Comercial,
-  Operaciones y Marketing-Digital.
+- Resultado final: cuatro data marts dependientes del DWH para Comercial,
+  Operaciones, Marketing-Digital y Clientes.
 
 ## Data marts como producto final
 
-El flujo culmina en tres esquemas de SQL Server dentro de `DataRetail360_DW`:
+El flujo culmina en cuatro esquemas de SQL Server dentro de `DataRetail360_DW`:
 
 | Esquema | Tabla resumen persistente | Propósito |
 |---|---|---|
 | `dm_comercial` | `ventas_mensuales` | Ventas y devoluciones por mes, sucursal y canal; ticket y análisis de clientes/productos |
 | `dm_operaciones` | `inventario_actual` | Último corte común de stock por producto/sucursal; alertas, histórico y reposición |
 | `dm_marketing` | `campanias_resumen` | Campañas, consentimiento, sesiones y contraste con ventas asociadas a cupón |
+| `dm_clientes` | `clientes_mensuales` | Compras, devoluciones, recurrencia, actividad y medidas RFM observadas por identidad y mes |
 
 Son marts dependientes: cada uno contiene una tabla resumen física y vistas
 de los hechos y dimensiones conformadas del DWH. Las seis tablas de hechos
@@ -33,7 +34,7 @@ siguen integradas en `dw`; las vistas no duplican físicamente esos hechos.
 Marketing y navegación se agrupan para analizar adquisición y conversión,
 mientras que el e-commerce forma parte de la venta omnicanal de Comercial.
 
-La última transformación de `publish()` refresca y concilia los tres marts en
+La última transformación de `publish()` refresca y concilia los cuatro marts en
 la misma transacción que el DWH. Las FK se respetan limpiando sus resúmenes
 antes de recargar las dimensiones. Una excepción revierte toda la publicación.
 `ctl.datamart_publicaciones` registra la corrida y conteos por mart.
@@ -41,6 +42,33 @@ antes de recargar las dimensiones. Una excepción revierte toda la publicación.
 Las consultas de negocio consumen los esquemas `dm_*`. Los resúmenes y su
 catálogo se exportan a `data/gold/datamarts/`. El diccionario explica su grano,
 las métricas sumables y las tasas que deben recalcularse desde sus componentes.
+
+### Data mart Clientes
+
+El grano es `cliente_nk × año × mes`, independiente de las versiones SCD.
+Se incluyen meses sin compras desde la primera actividad identificable hasta
+el último evento disponible de ventas o devoluciones. Los atributos se enlazan
+con la versión SCD válida al corte, con una bandera si no hay historia disponible.
+El corte es fin de mes, salvo el último mes parcial, que termina en el último
+evento del dataset; la fecha del sistema no altera la recencia al reejecutar.
+
+Una compra cuenta un documento distinto. Se conservan unidades, ventas,
+devoluciones, netos, primeras/últimas compras del mes, acumulados y ventanas de
+hasta 12 meses calendario. La recencia usa la última compra observada hasta el
+corte; activo significa compra en los seis meses calendario anteriores, inclusive.
+Los meses sin actividad mantienen cero en sus flujos y conservan el último
+estado observado. Las devoluciones posteriores pueden producir un neto negativo.
+
+`v_clientes_mensuales` expone atributos y ticket; `v_estado_clientes` y `v_rfm`
+presentan el último corte. `v_cobertura_identidad` separa la actividad financiera
+identificada y anónima. Las compras anónimas no se transforman en una persona;
+los clientes registrados sin actividad observada quedan fuera de esta población.
+Los ejemplos del notebook usan la fecha de negocio del caso para comparar el
+mismo indicador de cliente activo. Los cortes se muestran explícitamente.
+
+Las ventanas RFM contienen medidas observadas, sin scores o predicciones de
+abandono o valor de vida. Clientes únicos requieren `COUNT DISTINCT` entre meses;
+los acumulados y ventanas se comparan dentro de un solo corte.
 
 ## Entorno y ejecución
 
@@ -76,7 +104,7 @@ publicaciones completas para comprobar idempotencia. Puede tardar varios minutos
 y requiere memoria y espacio para las capas locales. Las tablas `dw` pertenecen
 a esta evaluación; el pipeline renueva sus hechos de forma transaccional y
 conserva las versiones de dimensiones leídas del destino. Ambas publicaciones
-incluyen los tres marts; las pruebas comparan sus conteos y contenido, comprueban
+incluyen los cuatro marts; las pruebas comparan sus conteos y contenido, comprueban
 la conciliación con el DWH y simulan un fallo para verificar el rollback.
 
 ## Archivos del proyecto
