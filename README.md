@@ -47,10 +47,14 @@ las métricas sumables y las tasas que deben recalcularse desde sus componentes.
 
 El grano es `cliente_nk × año × mes`, independiente de las versiones SCD.
 Se incluyen meses sin compras desde la primera actividad identificable hasta
-el último evento disponible de ventas o devoluciones. Los atributos se enlazan
+`fecha_fin`, cobertura fiable de compras declarada por el contrato del dataset.
+Los atributos se enlazan
 con la versión SCD válida al corte, con una bandera si no hay historia disponible.
-El corte es fin de mes, salvo el último mes parcial, que termina en el último
-evento del dataset; la fecha del sistema no altera la recencia al reejecutar.
+El corte es fin de mes, salvo el último mes parcial, que termina en `fecha_fin`;
+la fecha del sistema no altera la recencia al reejecutar. Los reembolsos posteriores
+permanecen en los marts financieros y en `v_cobertura_identidad`, marcados con
+`dentro_cobertura_compras=0`. No generan meses artificiales de compras cero ni
+un supuesto abandono de clientes cuando la fuente de ventas ya no tiene cobertura.
 
 Una compra cuenta un documento distinto. Se conservan unidades, ventas,
 devoluciones, netos, primeras/últimas compras del mes, acumulados y ventanas de
@@ -60,8 +64,9 @@ Los meses sin actividad mantienen cero en sus flujos y conservan el último
 estado observado. Las devoluciones posteriores pueden producir un neto negativo.
 
 `v_clientes_mensuales` expone atributos y ticket; `v_estado_clientes` y `v_rfm`
-presentan el último corte. `v_cobertura_identidad` separa la actividad financiera
-identificada y anónima. Las compras anónimas no se transforman en una persona;
+presentan el último corte cubierto por compras. `v_cobertura_identidad` separa la
+actividad financiera identificada/anónima y dentro/fuera de cobertura temporal.
+Las compras anónimas no se transforman en una persona;
 los clientes registrados sin actividad observada quedan fuera de esta población.
 Los ejemplos del notebook usan la fecha de negocio del caso para comparar el
 mismo indicador de cliente activo. Los cortes se muestran explícitamente.
