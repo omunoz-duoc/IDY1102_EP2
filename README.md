@@ -51,7 +51,7 @@ Marketing y navegación se agrupan para analizar adquisición y conversión,
 mientras que el e-commerce forma parte de la venta omnicanal de Comercial.
 
 `publish()` carga los frames del DWH en un esquema candidato propio y ejecuta
-`dbt build`: cuatro tablas resumen, una vista intermedia y 33 pruebas. Python
+`dbt build`: cuatro tablas resumen, una vista intermedia y 58 pruebas. Python
 promueve la misma instantánea y los resultados aprobados en una sola transacción
 con el DWH. Las FK se respetan limpiando sus resúmenes antes de recargar las
 dimensiones. Una excepción revierte toda la publicación; un fallo previo de dbt
@@ -118,11 +118,11 @@ publicación mediante candidatos antes de presentar los marts.
 
 `dbt/models/` contiene cuatro modelos tabla (los resúmenes de los marts) y la
 vista intermedia `int_documentos_campania`, utilizada por Marketing mediante
-`ref()`. Las doce tablas integradas se declaran con `source()`. El esquema fuente
+`ref()`. Las dieciocho tablas integradas se declaran con `source()`. El esquema fuente
 se configura por corrida, sin cambiar la lógica SQL. `dbt/tests/` y las pruebas
 de `schema.yml` controlan grano, nulos obligatorios, doce relaciones a dimensiones,
 conciliación financiera, inventario, atribución de campañas, cobertura y ventanas
-de Clientes. Son 33 pruebas de datos. La etapa 3 verificó además igualdad completa
+de Clientes. Son 58 pruebas de datos con el copo de nieve. La etapa 3 verificó además igualdad completa
 con los cuatro marts anteriores mediante `EXCEPT` en ambas direcciones.
 
 Para desarrollo aislado sobre el DWH ya publicado:
@@ -151,7 +151,7 @@ permanezcan iguales. Las exportaciones de archivos se verifican después de la
 transacción SQL; no se afirma atomicidad distribuida entre SQL y disco.
 
 Validación final de la integración: 42 celdas ejecutadas sin errores, 31 controles
-del notebook y 33 pruebas dbt aprobadas en cada una de las dos publicaciones.
+del notebook y 58 pruebas dbt aprobadas en cada una de las dos publicaciones.
 Los resúmenes contienen 3.034 filas en Comercial, 85.294 en Operaciones, 93 en
 Marketing y 991.760 en Clientes. La prueba adversa detectó el peso alterado y
 conservó las tablas finales. El notebook guarda estas evidencias en sus salidas.
@@ -221,3 +221,14 @@ Antes de cada commit del notebook se revisarán sus salidas para evitar incluir
 datos personales o cadenas de conexión sensibles.
 
 Git registra versiones locales; no se ha configurado ni publicado un remoto.
+
+
+La validación aislada del copo de nieve aprobó 58 pruebas dbt y comprobó paridad
+completa de los cuatro marts respecto del modelo anterior. Los conteos jerárquicos
+iniciales, incluidos desconocidos, son: 2 países, 17 regiones, 39 comunas, 5 líneas,
+36 categorías y 56 subcategorías. `snowflake.py` implementa las jerarquías y
+`tests/test_snowflake.py` conserva seis casos controlados. Para ejecutarlos:
+
+```powershell
+.\.venv\Scripts\python -m unittest discover -s tests -v
+```

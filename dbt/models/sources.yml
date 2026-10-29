@@ -1,14 +1,30 @@
 version: 2
 sources:
   - name: warehouse
-    description: "DWH integrado por Python. En desarrollo se lee dw; el notebook fija un esquema candidato por corrida."
+    description: "DWH con copo de nieve: fuentes normalizadas por corrida, antes de su promoción atómica."
     database: "{{ target.database }}"
     schema: "{{ var('source_schema') }}"
     tables:
       - name: dim_fecha
       - name: dim_producto
+        columns:
+          - name: subcategoria_key
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('warehouse', 'dim_subcategoria')
+                    field: subcategoria_key
       - name: dim_cliente
       - name: dim_sucursal
+        columns:
+          - name: comuna_key
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('warehouse', 'dim_comuna')
+                    field: comuna_key
       - name: dim_canal
       - name: dim_campania
       - name: fact_ventas
@@ -17,3 +33,67 @@ sources:
       - name: fact_marketing
       - name: fact_web
       - name: fact_reposicion
+      - name: dim_pais
+        columns:
+          - name: pais_key
+            data_tests:
+              - unique
+              - not_null
+      - name: dim_region
+        columns:
+          - name: region_key
+            data_tests:
+              - unique
+              - not_null
+          - name: pais_key
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('warehouse', 'dim_pais')
+                    field: pais_key
+      - name: dim_comuna
+        columns:
+          - name: comuna_key
+            data_tests:
+              - unique
+              - not_null
+          - name: region_key
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('warehouse', 'dim_region')
+                    field: region_key
+      - name: dim_linea
+        columns:
+          - name: linea_key
+            data_tests:
+              - unique
+              - not_null
+      - name: dim_categoria
+        columns:
+          - name: categoria_key
+            data_tests:
+              - unique
+              - not_null
+          - name: linea_key
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('warehouse', 'dim_linea')
+                    field: linea_key
+      - name: dim_subcategoria
+        columns:
+          - name: subcategoria_key
+            data_tests:
+              - unique
+              - not_null
+          - name: categoria_key
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('warehouse', 'dim_categoria')
+                    field: categoria_key
