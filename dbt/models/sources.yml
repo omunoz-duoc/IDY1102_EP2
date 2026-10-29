@@ -1,0 +1,19 @@
+version: 2
+sources:
+  - name: warehouse
+    description: "DWH integrado por Python. En desarrollo se lee dw; el notebook fija un esquema candidato por corrida."
+    database: "{{ target.database }}"
+    schema: "{{ var('source_schema') }}"
+    tables:
+      - name: dim_fecha
+      - name: dim_producto
+      - name: dim_cliente
+      - name: dim_sucursal
+      - name: dim_canal
+      - name: dim_campania
+      - name: fact_ventas
+      - name: fact_devoluciones
+      - name: fact_inventario
+      - name: fact_marketing
+      - name: fact_web
+      - name: fact_reposicion

@@ -1,0 +1,21 @@
+version: 2
+models:
+  - name: ventas_mensuales
+    description: "Comercial: año × mes × sucursal × canal. Conserva periodos con solo devoluciones. Ticket = suma ventas / suma documentos."
+    data_tests:
+      - unique_grain:
+          arguments:
+            columns: [anio, mes, sucursal_key, canal_key]
+    columns:
+      - name: sucursal_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_sucursal')
+                field: sucursal_key
+      - name: canal_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_canal')
+                field: canal_key
