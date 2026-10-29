@@ -94,6 +94,28 @@ resolver la instancia local sin forzar TCP 1433. La comprobación real de conexi
 y `pip check` pasaron durante la etapa 1. El notebook explica las etapas y la
 publicación mediante candidatos antes de presentar los marts.
 
+### Modelos y pruebas dbt
+
+`dbt/models/` contiene cuatro modelos tabla (los resúmenes de los marts) y la
+vista intermedia `int_documentos_campania`, utilizada por Marketing mediante
+`ref()`. Las doce tablas integradas se declaran con `source()`. El esquema fuente
+se configura por corrida, sin cambiar la lógica SQL. `dbt/tests/` y las pruebas
+de `schema.yml` controlan grano, nulos obligatorios, doce relaciones a dimensiones,
+conciliación financiera, inventario, atribución de campañas, cobertura y ventanas
+de Clientes. Son 33 pruebas de datos. La etapa 3 verificó además igualdad completa
+con los cuatro marts anteriores mediante `EXCEPT` en ambas direcciones.
+
+Para desarrollo aislado sobre el DWH ya publicado:
+
+```powershell
+.\.venv-dbt\Scripts\dbt build --project-dir dbt --profiles-dir dbt
+.\.venv-dbt\Scripts\dbt docs generate --project-dir dbt --profiles-dir dbt
+```
+
+Estos comandos escriben candidatos en `dbt_dev`; la publicación final la realiza
+el notebook. `manifest.json`, `run_results.json` y `catalog.json` permiten revisar
+dependencias, pruebas y columnas. La documentación HTML se genera en `target/`.
+
 Origen SQL: PostgreSQL `localhost:5432`, base `idy1102_ep2`, con 14 conjuntos.
 Origen CSV: `data/raw/marketing/campanias.csv` (campañas).
 Origen Excel: `data/raw/legacy/reportes_ventas.xlsx`, hoja

@@ -1,21 +1,238 @@
 version: 2
 models:
   - name: ventas_mensuales
-    description: "Comercial: año × mes × sucursal × canal. Conserva periodos con solo devoluciones. Ticket = suma ventas / suma documentos."
+    description: "Año × mes × sucursal × canal. Ventas y devoluciones separadas; neto puede ser negativo. Ticket se recalcula desde sumas."
     data_tests:
       - unique_grain:
           arguments:
             columns: [anio, mes, sucursal_key, canal_key]
+      - not_empty
+      - required_columns:
+          arguments:
+            columns: [anio, mes, sucursal_key, canal_key, venta_sin_devoluciones_clp, devoluciones_clp, venta_neta_clp, unidades_vendidas, unidades_devueltas, documentos]
     columns:
+      - name: anio
+        description: "anio. Componente del grano."
+      - name: mes
+        description: "mes. Componente del grano."
       - name: sucursal_key
+        description: "sucursal key. Componente del grano."
         data_tests:
           - relationships:
               arguments:
                 to: source('warehouse', 'dim_sucursal')
                 field: sucursal_key
       - name: canal_key
+        description: "canal key. Componente del grano."
         data_tests:
           - relationships:
               arguments:
                 to: source('warehouse', 'dim_canal')
                 field: canal_key
+      - name: venta_sin_devoluciones_clp
+        description: "venta sin devoluciones clp. Pesos chilenos, sin redondeos fraccionarios."
+      - name: devoluciones_clp
+        description: "devoluciones clp. Pesos chilenos, sin redondeos fraccionarios."
+      - name: venta_neta_clp
+        description: "venta neta clp. Pesos chilenos, sin redondeos fraccionarios."
+      - name: unidades_vendidas
+        description: "unidades vendidas."
+      - name: unidades_devueltas
+        description: "unidades devueltas."
+      - name: documentos
+        description: "documentos."
+  - name: inventario_actual
+    description: "Un único último corte global × producto × sucursal. Stock no se suma entre fechas; flags identifican conteos ausentes, antiguos y riesgo."
+    data_tests:
+      - unique_grain:
+          arguments:
+            columns: [fecha_key, producto_key, sucursal_key]
+      - not_empty
+      - required_columns:
+          arguments:
+            columns: [fecha_key, producto_key, sucursal_key, stock_sistema, sin_conteo, conteo_antiguo, riesgo_reposicion]
+    columns:
+      - name: fecha_key
+        description: "fecha key. Componente del grano."
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_fecha')
+                field: fecha_key
+      - name: producto_key
+        description: "producto key. Componente del grano."
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_producto')
+                field: producto_key
+      - name: sucursal_key
+        description: "sucursal key. Componente del grano."
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_sucursal')
+                field: sucursal_key
+      - name: stock_sistema
+        description: "stock sistema."
+      - name: stock_fisico
+        description: "stock fisico."
+      - name: stock_minimo
+        description: "stock minimo."
+      - name: punto_reposicion
+        description: "punto reposicion."
+      - name: unidades_en_transito
+        description: "unidades en transito."
+      - name: sin_conteo
+        description: "sin conteo."
+      - name: conteo_antiguo
+        description: "conteo antiguo."
+      - name: diferencia_stock
+        description: "diferencia stock."
+      - name: riesgo_reposicion
+        description: "riesgo reposicion."
+  - name: campanias_resumen
+    description: "Una campaña incluida clave 0 sin atribución. Cada proceso se agrega antes del join. Montos atribuidos por plataforma y ventas con cupón no prueban causalidad."
+    data_tests:
+      - unique_grain:
+          arguments:
+            columns: [campania_key]
+      - not_empty
+      - required_columns:
+          arguments:
+            columns: [campania_key, envios, entregados, abiertos, clicks, conversiones_entregadas, sin_consentimiento, monto_atribuido, sesiones, con_carrito, con_checkout, compra_reportada, documentos_asociados, venta_reconocida_clp, devoluciones_clp, venta_neta_asociada_clp]
+    columns:
+      - name: campania_key
+        description: "campania key. Componente del grano."
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_campania')
+                field: campania_key
+      - name: envios
+        description: "envios."
+      - name: entregados
+        description: "entregados."
+      - name: abiertos
+        description: "abiertos."
+      - name: clicks
+        description: "clicks."
+      - name: conversiones_entregadas
+        description: "conversiones entregadas."
+      - name: sin_consentimiento
+        description: "sin consentimiento."
+      - name: monto_atribuido
+        description: "monto atribuido."
+      - name: sesiones
+        description: "sesiones."
+      - name: con_carrito
+        description: "con carrito."
+      - name: con_checkout
+        description: "con checkout."
+      - name: compra_reportada
+        description: "compra reportada."
+      - name: documentos_asociados
+        description: "documentos asociados."
+      - name: venta_reconocida_clp
+        description: "venta reconocida clp. Pesos chilenos, sin redondeos fraccionarios."
+      - name: devoluciones_clp
+        description: "devoluciones clp. Pesos chilenos, sin redondeos fraccionarios."
+      - name: venta_neta_asociada_clp
+        description: "venta neta asociada clp. Pesos chilenos, sin redondeos fraccionarios."
+  - name: clientes_mensuales
+    description: "Identidad estable × mes hasta customer_cutoff_key. Incluye meses vacíos; RFM observado en hasta 12 meses calendario. Acumulados y ventanas solo se comparan al mismo corte."
+    data_tests:
+      - unique_grain:
+          arguments:
+            columns: [cliente_nk, anio, mes]
+      - not_empty
+      - required_columns:
+          arguments:
+            columns: [cliente_nk, anio, mes, fecha_corte_key, cliente_key_corte, sin_version_al_corte, compras, devoluciones, unidades_compradas, unidades_devueltas, venta_sin_devoluciones_clp, devoluciones_clp, venta_neta_clp, canal_principal_mes_key, compras_acumuladas, venta_neta_acumulada_clp, frecuencia_12m, monetario_12m_clp, meses_observados_12m, activo_6m]
+    columns:
+      - name: cliente_nk
+        description: "cliente nk. Componente del grano."
+      - name: anio
+        description: "anio. Componente del grano."
+      - name: mes
+        description: "mes. Componente del grano."
+      - name: fecha_corte_key
+        description: "fecha corte key."
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_fecha')
+                field: fecha_key
+      - name: cliente_key_corte
+        description: "cliente key corte."
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_cliente')
+                field: cliente_key
+      - name: sin_version_al_corte
+        description: "sin version al corte."
+      - name: compras
+        description: "compras."
+      - name: devoluciones
+        description: "devoluciones."
+      - name: unidades_compradas
+        description: "unidades compradas."
+      - name: unidades_devueltas
+        description: "unidades devueltas."
+      - name: venta_sin_devoluciones_clp
+        description: "venta sin devoluciones clp. Pesos chilenos, sin redondeos fraccionarios."
+      - name: devoluciones_clp
+        description: "devoluciones clp. Pesos chilenos, sin redondeos fraccionarios."
+      - name: venta_neta_clp
+        description: "venta neta clp. Pesos chilenos, sin redondeos fraccionarios."
+      - name: primera_compra_mes_key
+        description: "primera compra mes key."
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_fecha')
+                field: fecha_key
+      - name: ultima_compra_mes_key
+        description: "ultima compra mes key."
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_fecha')
+                field: fecha_key
+      - name: ultima_compra_hasta_corte_key
+        description: "ultima compra hasta corte key."
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_fecha')
+                field: fecha_key
+      - name: canal_principal_mes_key
+        description: "canal principal mes key."
+        data_tests:
+          - relationships:
+              arguments:
+                to: source('warehouse', 'dim_canal')
+                field: canal_key
+      - name: compras_acumuladas
+        description: "compras acumuladas."
+      - name: venta_neta_acumulada_clp
+        description: "venta neta acumulada clp. Pesos chilenos, sin redondeos fraccionarios."
+      - name: frecuencia_12m
+        description: "frecuencia 12m."
+      - name: monetario_12m_clp
+        description: "monetario 12m clp. Pesos chilenos, sin redondeos fraccionarios."
+      - name: meses_observados_12m
+        description: "meses observados 12m."
+      - name: recencia_dias
+        description: "recencia dias."
+      - name: activo_6m
+        description: "activo 6m."
+  - name: int_documentos_campania
+    description: "Un documento de venta tiene una sola campaña. Se usa para atribuir reembolsos sin multiplicar líneas."
+    config:
+      materialized: view
+    data_tests:
+      - unique_grain:
+          arguments:
+            columns: [documento_nk]
