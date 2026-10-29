@@ -3,7 +3,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 import io,json,logging,os,subprocess,sys,time,unittest
 from pipeline_logging import (configure_logging,pipeline_step,event,quality_event,
-    trace_step,run_logged_command,CommandFailed,insert_progress)
+    trace_step,run_logged_command,CommandFailed,insert_progress,report_data_warnings)
 
 
 class LoggingTest(unittest.TestCase):
@@ -143,6 +143,16 @@ class LoggingTest(unittest.TestCase):
         with patch('pipeline_logging.queue.Queue.get',side_effect=KeyboardInterrupt):
             with self.assertRaises(KeyboardInterrupt):self.command('import time;time.sleep(20)',timeout=5)
         self.assertEqual(self.records()[-1]['event'],'step_cancelled')
+
+    def test_data_flags_are_aggregate_and_anonymous_is_information(self):
+        import pandas as pd
+        report_data_warnings(self.log,{
+            'fact_ventas':pd.DataFrame({'cliente_key':[0,9],'producto_key':[1,2]}),
+            'fact_marketing':pd.DataFrame({'sin_consentimiento':[True,False]})},ambiguous_count=3)
+        rows=self.records()
+        anonymous=next(r for r in rows if r.get('metric')=='ventas_sin_identidad')
+        self.assertEqual(anonymous['level'],'INFO');self.assertEqual(anonymous['count'],1)
+        self.assertEqual(next(r for r in rows if r.get('metric')=='correos_ambiguos')['count'],3)
 
 
 if __name__=='__main__':unittest.main()

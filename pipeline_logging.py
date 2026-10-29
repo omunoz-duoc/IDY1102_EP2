@@ -25,7 +25,7 @@ _CURRENT = ContextVar('dr360_log_step', default=None)
 _FIELDS = ('event','stage','publication_id','object','source_type','rows','rows_total',
            'accepted','rejected','duplicates','elapsed_s','rows_per_s','progress_pct',
            'returncode','error_type','error_frames','action','artifact','attempt','expected',
-           'checks_passed','tests_passed','tables','process_id')
+           'checks_passed','tests_passed','tables','models','process_id','metric','count')
 
 
 class CommandFailed(RuntimeError):
@@ -212,6 +212,30 @@ def quality_event(logger,table,read,accepted,rejected,duplicates):
         event(logger,'quality_warning','Se separaron filas; revisar cuarentena y reglas antes de interpretar indicadores.',
             level=logging.WARNING,object=table,rejected=int(rejected),duplicates=int(duplicates),
             action='Consultar data/rechazos y la tabla de calidad; no es una falla de publicación.')
+
+
+def report_data_warnings(logger,frames,ambiguous_count=0):
+    """Indicadores agregados ya presentes en memoria; no muestra valores ni consulta SQL."""
+    if ambiguous_count:
+        event(logger,'identity_warning','Hay correos asociados a más de una identidad; se evitó fusionarlos por correo.',
+            level=logging.WARNING,stage='calidad.indicadores',metric='correos_ambiguos',count=int(ambiguous_count),
+            action='Revisar la cobertura de identidad; no asumir que todos los registros representan personas resueltas.')
+    checks=[
+        ('fact_ventas','cliente_key','ventas_sin_identidad',logging.INFO,'No contar estas líneas como clientes identificados.',True),
+        ('fact_ventas','producto_key','ventas_producto_desconocido',logging.WARNING,'Revisar homologación de productos y miembro 0.',True),
+        ('fact_marketing','sin_consentimiento','envios_sin_consentimiento',logging.WARNING,'Revisar consentimiento observado; la fuente no aporta su historia completa.',False),
+        ('fact_marketing','embudo_inconsistente','envios_embudo_inconsistente',logging.WARNING,'Consultar reglas de tasas condicionadas a entrega.',False),
+        ('fact_inventario','sin_conteo','cortes_sin_conteo',logging.WARNING,'No interpretar ausencia de conteo físico como stock cero.',False),
+        ('fact_inventario','conteo_antiguo','cortes_conteo_antiguo',logging.WARNING,'Revisar vigencia del conteo respecto de cada corte.',False),
+        ('dm_clientes.clientes_mensuales','sin_version_al_corte','clientes_meses_sin_version_scd',logging.WARNING,'Revisar límite de historia observada y uso de clave 0 al corte.',False)]
+    for table,column,metric,level,action,is_unknown in checks:
+        frame=frames.get(table)
+        if frame is None or column not in frame:continue
+        count=int((frame[column].eq(0) if is_unknown else frame[column]).sum())
+        if count:
+            event(logger,'coverage_info' if level==logging.INFO else 'data_warning',
+                'Indicador de cobertura/calidad observado; no detiene por sí mismo el pipeline.',
+                level=level,stage='calidad.indicadores',object=table,metric=metric,count=count,action=action)
 
 
 @contextmanager

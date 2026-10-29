@@ -195,9 +195,65 @@ conserva las versiones de dimensiones leídas del destino. Ambas publicaciones
 incluyen los cuatro marts; las pruebas comparan sus conteos y contenido, comprueban
 la conciliación con el DWH y simulan un fallo para verificar el rollback.
 
+## Logs y seguimiento del pipeline
+
+El notebook muestra inicio, término, duración y objeto de cada etapa. Durante una
+operación silenciosa emite un heartbeat cada 30 segundos; a los 300 segundos
+advierte una duración elevada. El heartbeat indica actividad de Python y no
+certifica que SQL Server avance o que esté bloqueado. Las etapas hijas silencian
+el heartbeat del padre para evitar mensajes repetidos.
+
+Las cargas de staging informan filas esperadas, avances por batches cada 50.000
+filas, porcentaje cuando hay un total conocido y filas/segundo. Se observan los
+inserts existentes: no se cambian tamaños de lote ni se agregan consultas SQL
+para medir progreso. Las filas dentro de una transacción no implican publicación:
+el evento `publication_committed` aparece después de confirmar el commit.
+
+Por corrida se escriben:
+
+- `logs/<RUN_ID>.log`: registro legible, también visible en pantalla.
+- `logs/<RUN_ID>.jsonl`: eventos con UTC, RUN_ID, etapa, objeto, duración y conteos.
+- `artifacts/dbt/<publicación>/command_*.log`: salida del comando escrita en vivo.
+
+`publication_id` identifica cada publicación, incluida `_repeat`. dbt muestra
+modelos/pruebas mientras se ejecutan. Un comando fallido no se anuncia como etapa
+exitosa; los rechazos de la prueba adversa se etiquetan como esperados. Los errores
+registran tipo y ubicaciones del traceback sin copiar texto SQL, parámetros ni filas.
+Se ocultan secretos conocidos en mensajes y salidas de comando. No se registran
+RUT, correos o muestras de datos en los eventos nuevos.
+
+Las advertencias de calidad incluyen rechazados y duplicados, con referencia a
+`data/rechazos`. Ctrl+C registra CANCELLED e intenta limpiar candidatos. Si la
+limpieza de procesos o esquemas no se confirma, se informa explícitamente para
+revisión. Un error secundario de auditoría conserva la excepción original; una
+limpieza pendiente no cambia un commit ya confirmado.
+
+La instrumentación se verifica con 27 pruebas nuevas (procesos reales, timeouts,
+cancelación, redacción, cargas SQLite y publicación con conexiones simuladas),
+además de las seis pruebas existentes de snowflake. Las salidas analíticas del
+notebook corresponden a su última ejecución completa previa a esta actualización;
+los nuevos logs se generarán al reejecutar. No se repitió la recarga completa de
+SQL Server para este cambio de observabilidad. El entorno `.venv` actual apunta a
+WSL; las pruebas de esta actualización se ejecutaron desde Python de Windows sin
+reconstruir ese entorno.
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+`pipeline_logging.py` usa la biblioteca estándar; el observador de inserts utiliza
+SQLAlchemy ya incluido en `requirements.txt`. Los intervalos y umbrales se ajustan
+en `configure_logging(...)` dentro del notebook. Las advertencias agregadas también
+identifican correos ambiguos, envíos sin consentimiento observado, embudos
+inconsistentes, conteos físicos ausentes/antiguos y meses sin versión SCD al corte.
+Las ventas anónimas se informan como cobertura; no son por sí mismas un error.
+Los indicadores pueden solaparse y no deben sumarse como un total de filas malas.
+
 ## Archivos del proyecto
 
 - `EP3_DataRetail360.ipynb`: informe e implementación principal.
+- `pipeline_logging.py`: eventos, progreso, redacción y ejecución de comandos con seguimiento.
+- `tests/`: pruebas de jerarquías y observabilidad.
 - `modelo.drawio`: modelo editable en diagrams.net.
 - `requirements.txt`: versiones del entorno utilizado.
 - `requirements-dbt.txt` y `requirements-dbt-lock.txt`: herramientas dbt y entorno reproducible independiente.
