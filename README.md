@@ -120,7 +120,7 @@ publicación mediante candidatos antes de presentar los marts.
 vista intermedia `int_documentos_campania`, utilizada por Marketing mediante
 `ref()`. Las dieciocho tablas integradas se declaran con `source()`. El esquema fuente
 se configura por corrida, sin cambiar la lógica SQL. `dbt/tests/` y las pruebas
-de `schema.yml` controlan grano, nulos obligatorios, doce relaciones a dimensiones,
+de `schema.yml` controlan grano, nulos obligatorios, las relaciones de marts y jerarquías,
 conciliación financiera, inventario, atribución de campañas, cobertura y ventanas
 de Clientes. Son 58 pruebas de datos con el copo de nieve. La etapa 3 verificó además igualdad completa
 con los cuatro marts anteriores mediante `EXCEPT` en ambas direcciones.
@@ -150,11 +150,15 @@ peso en un candidato aislado, comprueba el rechazo de dbt y que los marts finale
 permanezcan iguales. Las exportaciones de archivos se verifican después de la
 transacción SQL; no se afirma atomicidad distribuida entre SQL y disco.
 
-Validación final de la integración: 42 celdas ejecutadas sin errores, 31 controles
+Validación final con snowflake: 48 celdas ejecutadas sin errores, 35 controles
 del notebook y 58 pruebas dbt aprobadas en cada una de las dos publicaciones.
 Los resúmenes contienen 3.034 filas en Comercial, 85.294 en Operaciones, 93 en
 Marketing y 991.760 en Clientes. La prueba adversa detectó el peso alterado y
 conservó las tablas finales. El notebook guarda estas evidencias en sus salidas.
+También aprobó seis pruebas controladas de jerarquías. La lectura posterior desde
+SQL Server reconstruyó los atributos SCD y conservó versiones/claves al repetirlos.
+Los hechos y cuatro marts conservaron sus conteos y checksums previos a la migración;
+los controles monetarios y de integridad del notebook complementan esa comparación.
 
 Origen SQL: PostgreSQL `localhost:5432`, base `idy1102_ep2`, con 14 conjuntos.
 Origen CSV: `data/raw/marketing/campanias.csv` (campañas).
