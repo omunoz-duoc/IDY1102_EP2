@@ -77,6 +77,23 @@ los acumulados y ventanas se comparan dentro de un solo corte.
 
 ## Entorno y ejecución
 
+### Entorno dbt independiente
+
+`requirements.txt` conserva el entorno del notebook. dbt usa Python 3.14 en
+`.venv-dbt`, con dbt Core 1.12.6 y dbt SQL Server 1.12.1:
+
+```powershell
+python -m venv .venv-dbt
+.\.venv-dbt\Scripts\python -m pip install -r requirements-dbt-lock.txt
+.\.venv-dbt\Scripts\dbt debug --project-dir dbt --profiles-dir dbt
+```
+
+El perfil versionado no contiene contraseñas: usa Windows, ODBC 18 y las mismas
+variables `MSSQL_SERVER`/`MSSQL_DATABASE` que el notebook. `port: null` permite
+resolver la instancia local sin forzar TCP 1433. La comprobación real de conexión
+y `pip check` pasaron durante la etapa 1. El notebook explica las etapas y la
+publicación mediante candidatos antes de presentar los marts.
+
 Origen SQL: PostgreSQL `localhost:5432`, base `idy1102_ep2`, con 14 conjuntos.
 Origen CSV: `data/raw/marketing/campanias.csv` (campañas).
 Origen Excel: `data/raw/legacy/reportes_ventas.xlsx`, hoja

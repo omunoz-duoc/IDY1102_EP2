@@ -1,0 +1,18 @@
+name: dataretail360
+version: '1.0.0'
+config-version: 2
+profile: dataretail360
+model-paths: [models]
+test-paths: [tests]
+macro-paths: [macros]
+clean-targets: [target, dbt_packages]
+models:
+  dataretail360:
+    +materialized: table
+    +as_columnstore: false
+    +persist_docs:
+      relation: true
+      columns: true
+vars:
+  source_schema: dw
+  customer_cutoff_key: 20260930

@@ -1,0 +1,3 @@
+# Entorno independiente del kernel del notebook (Python 3.14).
+dbt-core==1.12.6
+dbt-sqlserver[pyodbc]==1.12.1
