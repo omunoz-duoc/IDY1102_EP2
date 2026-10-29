@@ -19,6 +19,22 @@ SCD, pipeline ETL y almacenamiento analítico del caso DataRetail 360.
 
 ## Data marts como producto final
 
+### Checkpoints de evolución a copo de nieve
+
+1. Contrato y funciones: sucursal → comuna → región → país; producto → subcategoría
+   → categoría → línea. Los miembros se identifican dentro de su padre y conservan
+   sus claves. Pruebas de homónimos, reejecución, integridad y reclasificación histórica.
+2. Integración física: seis tablas nuevas, seis FK entre dimensiones, migración
+   transaccional y vistas de consumo. Las PK de productos/sucursales y hechos se conservan.
+3. dbt y presentación: pruebas de jerarquías, diagrama y evidencia de joins sin
+   multiplicación de ventas; notebook ejecutado y segunda publicación verificable.
+
+La geografía de `dim_cliente` conserva su diseño actual. Las jerarquías de productos
+son inmutables: cambiar clasificación crea otra rama y una versión SCD2 del producto;
+no se modifica la clasificación de sus versiones anteriores. La geografía de sucursales
+mantiene su política SCD1 y `zona/zona_anterior` mantiene SCD3. Las etiquetas se
+reconstruyen mediante joins en vistas de consumo, sin redundarlas en las tablas físicas.
+
 El flujo culmina en cuatro esquemas de SQL Server dentro de `DataRetail360_DW`:
 
 | Esquema | Tabla resumen persistente | Propósito |
