@@ -34,9 +34,13 @@ siguen integradas en `dw`; las vistas no duplican físicamente esos hechos.
 Marketing y navegación se agrupan para analizar adquisición y conversión,
 mientras que el e-commerce forma parte de la venta omnicanal de Comercial.
 
-La última transformación de `publish()` refresca y concilia los cuatro marts en
-la misma transacción que el DWH. Las FK se respetan limpiando sus resúmenes
-antes de recargar las dimensiones. Una excepción revierte toda la publicación.
+`publish()` carga los frames del DWH en un esquema candidato propio y ejecuta
+`dbt build`: cuatro tablas resumen, una vista intermedia y 33 pruebas. Python
+promueve la misma instantánea y los resultados aprobados en una sola transacción
+con el DWH. Las FK se respetan limpiando sus resúmenes antes de recargar las
+dimensiones. Una excepción revierte toda la publicación; un fallo previo de dbt
+no modifica los objetos finales. dbt no garantiza por sí mismo una transacción
+global entre modelos.
 `ctl.datamart_publicaciones` registra la corrida y conteos por mart.
 
 Las consultas de negocio consumen los esquemas `dm_*`. Los resúmenes y su
@@ -115,6 +119,20 @@ Para desarrollo aislado sobre el DWH ya publicado:
 Estos comandos escriben candidatos en `dbt_dev`; la publicación final la realiza
 el notebook. `manifest.json`, `run_results.json` y `catalog.json` permiten revisar
 dependencias, pruebas y columnas. La documentación HTML se genera en `target/`.
+
+El notebook orquesta el flujo completo automáticamente. Conserva por corrida
+`artifacts/dbt/<run_id>/build_manifest.json`, `build_run_results.json`,
+`catalog.json`, `static_index.html` y `publication.json` (versiones, hashes, corte,
+estado de promoción y limpieza). Las tablas candidatas usan esquemas únicos
+`stage_<token>` y `dbt_<token>`; se eliminan al finalizar, incluso ante errores
+controlados. Un cierre abrupto puede dejar candidatos huérfanos para revisión
+administrativa. Los artefactos y logs quedan disponibles para diagnosticar fallas.
+
+El notebook muestra dependencias, resultados de pruebas y SQL expandible sin
+necesitar abrir otros archivos. Verifica además un caso adverso real: altera un
+peso en un candidato aislado, comprueba el rechazo de dbt y que los marts finales
+permanezcan iguales. Las exportaciones de archivos se verifican después de la
+transacción SQL; no se afirma atomicidad distribuida entre SQL y disco.
 
 Origen SQL: PostgreSQL `localhost:5432`, base `idy1102_ep2`, con 14 conjuntos.
 Origen CSV: `data/raw/marketing/campanias.csv` (campañas).
