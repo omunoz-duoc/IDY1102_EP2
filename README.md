@@ -134,6 +134,12 @@ peso en un candidato aislado, comprueba el rechazo de dbt y que los marts finale
 permanezcan iguales. Las exportaciones de archivos se verifican después de la
 transacción SQL; no se afirma atomicidad distribuida entre SQL y disco.
 
+Validación final de la integración: 42 celdas ejecutadas sin errores, 31 controles
+del notebook y 33 pruebas dbt aprobadas en cada una de las dos publicaciones.
+Los resúmenes contienen 3.034 filas en Comercial, 85.294 en Operaciones, 93 en
+Marketing y 991.760 en Clientes. La prueba adversa detectó el peso alterado y
+conservó las tablas finales. El notebook guarda estas evidencias en sus salidas.
+
 Origen SQL: PostgreSQL `localhost:5432`, base `idy1102_ep2`, con 14 conjuntos.
 Origen CSV: `data/raw/marketing/campanias.csv` (campañas).
 Origen Excel: `data/raw/legacy/reportes_ventas.xlsx`, hoja
@@ -174,10 +180,13 @@ la conciliación con el DWH y simulan un fallo para verificar el rollback.
 - `EP3_DataRetail360.ipynb`: informe e implementación principal.
 - `modelo.drawio`: modelo editable en diagrams.net.
 - `requirements.txt`: versiones del entorno utilizado.
+- `requirements-dbt.txt` y `requirements-dbt-lock.txt`: herramientas dbt y entorno reproducible independiente.
+- `dbt/`: proyecto, perfil Windows sin secretos, modelos SQL, documentación y pruebas.
 - `.env.example`: configuración sin secretos.
 - `PLAN.md`: etapas de desarrollo y criterios de evaluación.
 - `data/raw/`: archivos de entrada provistos por el estudiante, excluidos de Git.
 - Otras subcarpetas de `data/` y `logs/`: evidencias locales generadas, excluidas de Git.
+- `artifacts/dbt/`: evidencia y documentación de cada build, excluidas de Git.
 
 El notebook incluye consultas sobre el destino, pruebas SCD aisladas, conciliación,
 rollback, una segunda publicación, diccionario semántico, gráficos y conclusiones.
