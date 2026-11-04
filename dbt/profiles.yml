@@ -1,19 +1,18 @@
-# Perfil sin contraseñas: identidad de Windows del proceso que ejecuta el notebook.
 dataretail360:
   target: local
   outputs:
     local:
       type: sqlserver
-      driver: ODBC Driver 18 for SQL Server
+      driver: "{{ env_var('MSSQL_DRIVER', 'ODBC Driver 18 for SQL Server') }}"
       server: "{{ env_var('MSSQL_SERVER', 'localhost') }}"
-      # Sin puerto forzado: misma resolución de instancia local que SQLAlchemy.
-      port: null
+      port: "{{ env_var('MSSQL_PORT', '1433') | int }}"
       database: "{{ env_var('MSSQL_DATABASE', 'DataRetail360_DW') }}"
       schema: "{{ env_var('DBT_CANDIDATE_SCHEMA', 'dbt_dev') }}"
-      windows_login: true
+      windows_login: "{{ (env_var('MSSQL_AUTH', 'sql') == 'windows') | as_bool }}"
+      user: "{{ env_var('MSSQL_USER', '') }}"
+      password: "{{ env_var('MSSQL_PASSWORD', '') }}"
       encrypt: true
-      trust_cert: true
-      # Modelos y pruebas independientes en paralelo; el gate exige igualmente 58/58.
+      trust_cert: "{{ (env_var('MSSQL_TRUST_CERT', 'yes') == 'yes') | as_bool }}"
       threads: 4
       retries: 0
       login_timeout: 15

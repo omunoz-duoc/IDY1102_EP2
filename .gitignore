@@ -47,3 +47,9 @@ dbt/.user.yml
 
 # informe
 informe/
+# Validación local y documentación portable
+.venv-portable/
+!PLAN.md
+*.ejecutado.ipynb
+artifacts-demo/
+logs-demo/

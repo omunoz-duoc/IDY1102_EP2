@@ -1,0 +1,66 @@
+name: dataretail360-demo
+
+x-runtime: &runtime
+  PGHOST: postgres
+  PGPORT: "5432"
+  PGDATABASE: dataretail_demo
+  PGUSER: demo
+  PGPASSWORD: ${DEMO_PG_PASSWORD:-DemoPostgres_360!}
+  MSSQL_SERVER: sqlserver
+  MSSQL_PORT: "1433"
+  MSSQL_DATABASE: DataRetail360_Demo
+  MSSQL_AUTH: sql
+  MSSQL_USER: sa
+  MSSQL_PASSWORD: ${DEMO_SQL_PASSWORD:-DemoSqlServer_360!}
+  MSSQL_TRUST_CERT: "yes"
+  DATARETAIL_DEMO: "1"
+
+services:
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: dataretail_demo
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: ${DEMO_PG_PASSWORD:-DemoPostgres_360!}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d dataretail_demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${DEMO_SQL_PASSWORD:-DemoSqlServer_360!}
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 30s
+
+  notebook:
+    build: .
+    platform: linux/amd64
+    environment: *runtime
+    ports:
+      - "127.0.0.1:${NOTEBOOK_PORT:-8888}:8888"
+    volumes:
+      - workspace:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sqlserver:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  sqlserver-data:
+  workspace:

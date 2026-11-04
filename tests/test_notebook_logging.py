@@ -115,13 +115,13 @@ class NotebookLoggingTest(unittest.TestCase):
 
     def dbt_function(self,name,**extra):
         node=next(n for n in ast.walk(ast.parse(self.cells['dbt-orquestacion'])) if isinstance(n,ast.FunctionDef) and n.name==name)
-        env={**self.env,**extra}
+        env={**self.env,"os":os,**extra}
         exec(compile(ast.Module(body=[node],type_ignores=[]),'notebook_dbt','exec'),env)
         return env[name]
 
     def make_gate_artifacts(self):
         folder=self.root/'dbt_artifacts';folder.mkdir()
-        nodes={f'model.m{i}':{'resource_type':'model','schema':'candidate','database':'DataRetail360_DW'} for i in range(5)}
+        nodes={f'model.m{i}':{'resource_type':'model','schema':'candidate','database':os.getenv('MSSQL_DATABASE','DataRetail360_DW')} for i in range(5)}
         nodes.update({f'test.t{i}':{'resource_type':'test'} for i in range(58)})
         graph={'nodes':nodes,'sources':{f'source.s{i}':{'schema':'stage'} for i in range(18)}}
         results={'results':[{'unique_id':key,'status':'success' if key.startswith('model.') else 'pass'} for key in nodes]}
@@ -134,6 +134,14 @@ class NotebookLoggingTest(unittest.TestCase):
         self.dbt_function('dbt_gate')(folder,'stage','candidate')
         result=next(r for r in self.records() if r['event']=='dbt_gate_passed')
         self.assertEqual(result['tests_passed'],58)
+
+    def test_real_notebook_dbt_gate_accepts_configured_database(self):
+        with patch.dict(os.environ,{'MSSQL_DATABASE':'DataRetail360_Demo'}):
+            folder,_=self.make_gate_artifacts()
+            self.dbt_function('dbt_gate')(folder,'stage','candidate')
+            with patch.dict(os.environ,{'MSSQL_DATABASE':'DifferentDestination'}):
+                with self.assertRaisesRegex(ValueError,'fuera del destino'):
+                    self.dbt_function('dbt_gate')(folder,'stage','candidate')
 
     def test_real_notebook_dbt_gate_labels_expected_probe(self):
         folder,results=self.make_gate_artifacts();results['results']=results['results'][-1:]
