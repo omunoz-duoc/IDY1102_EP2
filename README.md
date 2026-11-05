@@ -1,303 +1,210 @@
-# DataRetail 360 — notebook portable con Docker
+# DataRetail 360 — pipeline reproducible
 
-**IDY1102 · Evaluación Parcial 3 · Oscar Muñoz**
+**IDY1102 · Oscar Muñoz**
 
-El entregable principal es `EP3_DataRetail360.ipynb`. Un clon limpio genera una
-**demo sintética determinista**, extrae 14 tablas de PostgreSQL más un CSV y un
-Excel, y publica el DWH y cuatro data marts en SQL Server. No necesita las bases,
-archivos privados, entornos virtuales ni credenciales del equipo original.
+Pipeline analítico empaquetado (`dataretail360`) que extrae **14 tablas de PostgreSQL,
+un CSV y un Excel**, las procesa por capas Bronze → Silver → Gold, publica un DWH
+dimensional (SCD 1/2/3 + copo de nieve) y **4 data marts dependientes** en SQL Server
+validados con dbt, y deja un reporte, un manifiesto y logs JSONL de cada corrida.
+
+Un clon limpio produce el mismo resultado en cualquier máquina x86-64 con Docker:
+no requiere Python, ODBC, PostgreSQL, SQL Server ni dbt instalados en el host.
 
 ## Inicio rápido
 
-Requisitos: Git, Docker Engine/Desktop con **contenedores Linux**, Compose v2,
-conexión a Internet para la primera construcción y una máquina **x86-64**.
-Asignar aproximadamente 6 GB de RAM a Docker como punto de partida para esta demo.
-SQL Server Developer se utiliza para desarrollo y evaluación.
-
-En Windows y macOS, abrir Docker Desktop y esperar a que el motor esté funcionando.
-En Linux, comprobar que Docker Engine esté iniciado y accesible desde la terminal.
-No es necesario instalar Python, ODBC, PostgreSQL, SQL Server ni dbt en el host.
-
-Elegir **una** de las rutas siguientes según la terminal. Ambas configuran el
-puerto **8889** del equipo para acceder al puerto **8888** interno del contenedor.
-Los pasos que crean `.env` son para un clon nuevo; si ya existe, conservarlo y
-editar únicamente `NOTEBOOK_PORT=8889`.
-
-### Ruta A: Windows con PowerShell
-
-1. Clonar el repositorio y entrar en la carpeta:
-
-   ```powershell
-   git clone https://github.com/omunoz-duoc/IDY1102_EP2.git
-   cd IDY1102_EP2
-   ```
-
-2. Crear la configuración local y seleccionar el puerto 8889:
-
-   ```powershell
-   Copy-Item .env.example .env
-   (Get-Content .env) -replace '^NOTEBOOK_PORT=.*$', 'NOTEBOOK_PORT=8889' | Set-Content .env -Encoding utf8
-   ```
-
-3. Construir e iniciar todos los servicios:
-
-   ```powershell
-   docker compose up --build -d
-   docker compose ps
-   docker compose logs -f notebook
-   ```
-
-   La primera construcción puede tardar varios minutos. Esperar a que PostgreSQL
-   y SQL Server estén `healthy` y aparezca `Jupyter Server ... is running at`.
-   Presionar **Ctrl+C** para salir del seguimiento de logs; los contenedores siguen funcionando.
-
-4. Obtener el token y abrir el notebook:
-
-   ```powershell
-   docker compose exec notebook jupyter server list
-   Start-Process "http://localhost:8889/lab/tree/EP3_DataRetail360.ipynb"
-   ```
-
-### Ruta B: macOS o Linux con Bash
-
-Los comandos de esta ruta sirven para Bash en ambos sistemas. El conjunto requiere
-x86-64 por SQL Server; no se garantiza funcionamiento en Apple Silicon/ARM mediante
-emulación. Consultar la [documentación oficial de SQL Server en Docker](https://learn.microsoft.com/en-us/sql/linux/quickstart-install-connect-docker?view=sql-server-ver17).
-La ejecución integral de este proyecto se validó en Docker Linux x86-64; no se ha
-validado por separado en macOS.
-
-1. Clonar el repositorio y entrar en la carpeta:
-
-   ```bash
-   git clone https://github.com/omunoz-duoc/IDY1102_EP2.git
-   cd IDY1102_EP2
-   ```
-
-2. Crear la configuración con el puerto 8889. Este comando funciona con `sed`
-   tanto en macOS como en Linux:
-
-   ```bash
-   sed 's/^NOTEBOOK_PORT=.*/NOTEBOOK_PORT=8889/' .env.example > .env
-   ```
-
-3. Construir e iniciar todos los servicios:
-
-   ```bash
-   docker compose up --build -d
-   docker compose ps
-   docker compose logs -f notebook
-   ```
-
-   Esperar a que PostgreSQL y SQL Server estén `healthy` y aparezca
-   `Jupyter Server ... is running at`. Presionar **Ctrl+C** para salir del
-   seguimiento de logs; los contenedores siguen funcionando.
-
-4. Obtener el token:
-
-   ```bash
-   docker compose exec notebook jupyter server list
-   ```
-
-5. Abrir el notebook usando el comando correspondiente al sistema:
-
-   **macOS:**
-
-   ```bash
-   open "http://localhost:8889/lab/tree/EP3_DataRetail360.ipynb"
-   ```
-
-   **Linux con escritorio:**
-
-   ```bash
-   xdg-open "http://localhost:8889/lab/tree/EP3_DataRetail360.ipynb"
-   ```
-
-   También se puede pegar [el enlace del notebook](http://localhost:8889/lab/tree/EP3_DataRetail360.ipynb)
-   directamente en el navegador del equipo donde se ejecuta Docker.
-
-### Acceso y ejecución de las celdas
-
-1. En la salida de `jupyter server list`, copiar el valor que sigue a `token=`.
-   Introducirlo en la pantalla de acceso de Jupyter. El comando muestra el puerto
-   **interno 8888**; en el navegador mantener **8889**.
-2. Abrir `EP3_DataRetail360.ipynb` y seleccionar **Python 3 (ipykernel)** si solicita un kernel.
-3. Seleccionar **Run → Run All Cells**. No iniciar otra corrida mientras esté en ejecución.
-4. Esperar hasta que termine y aparezcan las conclusiones. Guardar mediante
-   **File → Save Notebook** o el botón de guardar.
-
-Las bases y las fuentes sintéticas se preparan automáticamente. Las ediciones
-realizadas en Jupyter se guardan en el volumen Docker; para copiarlas al repositorio
-local, seguir la sección **Verificación y exportación**.
-
-### Detener y volver a iniciar
-
-Desde la carpeta del repositorio, en PowerShell o Bash, detener sin borrar datos:
+Requisitos: Git, Docker Engine/Desktop con **contenedores Linux**, Compose v2, ~6 GB
+de RAM asignados a Docker e Internet para la primera construcción.
 
 ```sh
-docker compose stop
+git clone https://github.com/omunoz-duoc/IDY1102_EP2.git
+cd IDY1102_EP2
+docker compose up --build pipeline
 ```
 
-Para volver a iniciar todos los servicios:
+Compose levanta PostgreSQL 17 y SQL Server 2022, ejecuta `seed` (dataset demo
+sintético) y, cuando termina con éxito, corre el pipeline completo. La corrida
+termina con el evento `run_completed` y `pipeline-1 exited with code 0`.
+
+Volver a ejecutar solo el pipeline (las fuentes y la historia SCD se conservan):
 
 ```sh
-docker compose up -d
-docker compose logs -f notebook
+docker compose run --rm pipeline run
 ```
 
-Cuando Jupyter esté listo, salir de los logs con **Ctrl+C** y obtener el token:
+## Fuentes de entrada
+
+El pipeline necesita su **contrato de entrada** completo; para verlo:
 
 ```sh
-docker compose exec notebook jupyter server list
+docker compose run --rm pipeline seed contract
 ```
 
-Abrir nuevamente [el notebook](http://localhost:8889/lab/tree/EP3_DataRetail360.ipynb).
-El token puede cambiar cuando se reinicia o recrea el contenedor.
-
-### Configuración de la demo
-
-Solo Jupyter expone un puerto, ligado a `127.0.0.1`; las bases quedan en la red
-interna de Compose. El token de Jupyter sigue habilitado. Las contraseñas por
-defecto son públicas y exclusivas de esta demo local. No usar esta configuración
-como despliegue de producción. ODBC cifra la conexión y confía en el certificado
-local del contenedor.
-
-Sin `.env`, Compose utiliza el puerto 8888; las rutas anteriores lo cambian a 8889.
-Para personalizar las contraseñas demo, editar `.env` antes del primer inicio.
-Las variables existentes del laboratorio no cambian los hosts ni las bases
-dedicadas que define Compose.
-
-## Datos y resultados
-
-`dataretail/demo.py` genera 3 sucursales, 6 productos y 8 identidades ficticias,
-64 documentos de venta entre enero y septiembre de 2026, 5 devoluciones,
-36 cortes de inventario, campañas, sesiones, envíos y reposición.
-Incluye compras anónimas, meses sin compras, un reembolso posterior al corte,
-envíos sin consentimiento y una fecha Excel ambigua para ejercitar las reglas.
-Los correos usan `example.invalid`; los identificadores se generan artificialmente.
-
-La preparación inicial crea las 14 tablas en `dr360_raw`, metadatos en
-`dr360_control` y los archivos `data/raw/marketing/campanias.csv` y
-`data/raw/legacy/reportes_ventas.xlsx`. El generador comparte el contrato de
-columnas con el notebook. Los reinicios conservan las fuentes y la historia SCD;
-un origen existente sin marcador demo no se sobrescribe.
-
-El notebook conserva Bronze/Silver/Gold, las reglas SCD 1/2/3, las jerarquías de
-producto y sucursal, la publicación transaccional mediante candidatos y dbt,
-la segunda publicación y la prueba adversa de rollback. Produce estos marts:
-
-| Esquema | Tabla principal |
+| Origen | Contenido |
 |---|---|
-| `dm_comercial` | `ventas_mensuales` |
-| `dm_operaciones` | `inventario_actual` |
-| `dm_marketing` | `campanias_resumen` |
-| `dm_clientes` | `clientes_mensuales` |
+| PostgreSQL `dr360_raw` | 14 tablas: POS, e-commerce, CRM, inventario, devoluciones, marketing, sesiones web |
+| PostgreSQL `dr360_control` | `config_generacion`, `definiciones_kpi_por_area`, `problemas_calidad_inyectados` |
+| `data/raw/marketing/campanias.csv` | Campañas de marketing |
+| `data/raw/legacy/reportes_ventas.xlsx` | Hoja `legacy_reporte_ventas_xlsx_2026` (reportes manuales) |
 
-Las salidas históricas se retiraron del notebook versionado para que la evidencia
-corresponda a la ejecución actual. Los conteos del dataset original de millones de
-filas no son resultados de esta demo. Las conclusiones se calculan al ejecutar.
+El servicio `seed` prepara esas fuentes según `DATARETAIL_SEED`:
 
-## Verificación y exportación
+| Modo | Efecto |
+|---|---|
+| `demo` (defecto) | Siembra el dataset sintético determinista. Idempotente: si ya existe la misma versión demo no hace nada, y si el origen tiene datos no demo los conserva. |
+| `none` | No toca las fuentes; solo crea la base destino de SQL Server si falta. |
 
-Pruebas de Python (incluyen transformaciones reales del notebook con la demo):
+El dataset demo contiene 3 sucursales, 6 productos, 8 identidades ficticias,
+64 ventas entre enero y septiembre de 2026, devoluciones, inventario, campañas,
+sesiones y envíos. Incluye a propósito problemas de calidad (compras anónimas,
+reembolso posterior al corte, envíos sin consentimiento, fecha Excel ambigua)
+para ejercitar las reglas. Los correos usan `example.invalid`.
 
-```sh
-docker compose exec notebook python -m unittest discover -s tests -v
-```
+### Paquetes de semilla (datos reales o congelados)
 
-Ejecución completa sin interfaz, con error de salida si falla una celda:
-
-```sh
-docker compose exec notebook python -m dataretail.execute
-```
-
-El resultado, incluso si hay un error, queda en
-`/app/artifacts/EP3_DataRetail360.ejecutado.ipynb`. La validación completa incluye
-los modelos/pruebas dbt, publicación repetida y rollback controlado del notebook.
-No basta con que los contenedores arranquen para considerar el pipeline validado.
-
-Exportar la ejecución o los cambios guardados en Jupyter:
+Para mover a otra máquina un conjunto de fuentes concreto, no solo la demo, se
+congela en un **paquete portable**: Parquet por tabla, el DDL de columnas, copias
+del CSV y el Excel, y un `manifest.json` con SHA256.
 
 ```sh
-docker compose cp notebook:/app/artifacts/EP3_DataRetail360.ejecutado.ipynb ./EP3_DataRetail360.ejecutado.ipynb
-docker compose cp notebook:/app/EP3_DataRetail360.ipynb ./EP3_DataRetail360.ipynb
+# 1. Exportar desde un stack con las fuentes cargadas (carpeta vacía y escribible por uid 1000)
+mkdir -p bundle && chmod 777 bundle
+docker compose run --rm -v "$PWD/bundle:/bundle" pipeline seed export /bundle
+
+# 2. En la máquina destino: verificar, cargar y ejecutar sin sembrar la demo
+export DATARETAIL_SEED=none
+docker compose run --rm -v "$PWD/bundle:/bundle" seed seed verify /bundle
+docker compose run --rm -v "$PWD/bundle:/bundle" seed seed load /bundle
+docker compose up pipeline
 ```
 
-Exportar logs y evidencia dbt antes de reiniciar desde cero:
+`seed load` rechaza un origen que ya tenga datos, salvo con `--replace`. **`--replace`
+(en `load` y en `demo`) elimina las tablas fuente existentes**: usar solo con bases
+dedicadas. Los paquetes pueden contener datos personales; no versionarlos en Git.
+
+## Resultados
+
+Cada corrida escribe en el workspace (`/workspace` en Docker; `DATARETAIL_HOME` en nativo):
+
+| Ruta | Contenido |
+|---|---|
+| `data/bronze/`, `data/silver/` | Instantánea de origen y datos integrados (Parquet) |
+| `data/gold/` | DWH y data marts publicados (Parquet), diccionarios de datos |
+| `data/control/`, `data/rechazos/` | Auditoría de calidad, rechazos, plan de consulta |
+| `artifacts/reports/<run_id>/report.md` | Reporte de la corrida: tablas, gráficos, controles y conclusiones |
+| `artifacts/dbt/<publicación>/` | Evidencia dbt (manifest, run_results) |
+| `logs/<run_id>.jsonl` | Eventos estructurados de la corrida |
+
+En SQL Server (`DataRetail360_Demo`) quedan el esquema `dw` (12 dimensiones y los
+hechos) y los marts `dm_comercial.ventas_mensuales`, `dm_operaciones.inventario_actual`,
+`dm_marketing.campanias_resumen` y `dm_clientes.clientes_mensuales`.
+
+Por defecto el workspace es un volumen Docker. Para tenerlo como carpeta del host,
+crear `.env` con `DATARETAIL_WORKSPACE=./workspace` y una carpeta `workspace/`
+escribible por uid 1000 antes de iniciar. Si no, copiar desde el contenedor:
 
 ```sh
-docker compose cp notebook:/app/artifacts ./artifacts-demo
-docker compose cp notebook:/app/logs ./logs-demo
+docker compose cp pipeline:/workspace/artifacts ./artifacts-out
 ```
 
-## Persistencia y actualización
+## Cómo funciona
 
-Compose usa tres volúmenes dedicados: PostgreSQL, SQL Server y `/app` (notebook,
-fuentes y resultados). El workspace se copia de la imagen **solo al crear su
-volumen por primera vez**. El proyecto del host no se monta: no se incluyen `.env`,
-Git, bases ni archivos privados en la imagen gracias a `.dockerignore`.
+1. **Bronze**: extracción de solo lectura con orden determinista y SHA256 de archivos.
+2. **Silver**: normalización (RUT, regiones, códigos, fechas Excel), resolución de
+   productos e identidades, reglas documentales y auditoría de calidad con rechazos.
+3. **Dimensiones**: SCD 1/2/3 con historia leída del DWH y jerarquías snowflake de
+   producto y sucursal (12 tablas físicas).
+4. **Hechos**: ventas, devoluciones, inventario, reposición, campañas y sesiones.
+5. **Publicación Write-Audit-Publish**: carga a esquemas candidatos, dbt construye
+   5 modelos y debe aprobar ≥ 33 pruebas; la promoción del DWH y los 4 marts es una
+   única transacción bajo `sp_getapplock`.
+6. **Gold, análisis y verificación**: exportaciones, consultas de negocio, diccionarios,
+   segunda publicación, prueba adversa de rollback (debe rechazarse) y benchmark.
+
+La corrida completa verifica 35 controles internos y 58 pruebas dbt por publicación.
+`run --skip-verify` omite la segunda publicación, las sondas y el benchmark.
+
+## Comandos
+
+```text
+dataretail360 doctor                  Verificar rutas, dbt y conexiones (sin modificar datos)
+dataretail360 run [--run-id ID] [--skip-verify]
+dataretail360 seed demo [--replace]   Sembrar el dataset demo
+dataretail360 seed export|load|verify PATH
+dataretail360 seed none | contract
+dataretail360 diagram [salida.png]    Matriz de bus del modelo dimensional
+```
+
+En Docker: `docker compose run --rm pipeline <comando>`.
+
+Pruebas unitarias (sin bases de datos, incluyen una corrida end-to-end en memoria):
 
 ```sh
-docker compose stop
-docker compose start
+docker compose run --rm --no-deps --entrypoint python pipeline -m pytest -q /app/tests/unit
 ```
 
-Estos comandos conservan datos y ediciones. `docker compose down` también conserva
-los volúmenes. Para actualizar código en una demo existente, exportar primero las
-ediciones y resultados. Después, si se desea reiniciar **toda la demo**, ejecutar:
+## Ejecución nativa (sin Docker)
+
+Requiere Python 3.14 (la versión de la imagen y de los locks), ODBC Driver 18 for SQL Server, y PostgreSQL y SQL Server accesibles.
 
 ```sh
-docker compose down --volumes
-docker compose up --build -d
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements/pipeline.lock.txt -r requirements/dev.txt && pip install --no-deps -e .
+python -m venv .dbt && .dbt/bin/pip install -r requirements/dbt.lock.txt
+export DBT_EXECUTABLE=$PWD/.dbt/bin/dbt
+dataretail360 doctor && dataretail360 seed demo && dataretail360 run
 ```
 
-**`down --volumes` elimina las bases, el notebook editado y resultados de esta demo.**
-No ejecutarlo sin exportar lo que se quiera conservar. Reconstruir únicamente la
-imagen no actualiza el workspace de un volumen existente.
+Variables (también desde un `.env` en el directorio de trabajo):
 
-## Organización y configuración
+| Variable | Uso |
+|---|---|
+| `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` | Origen PostgreSQL |
+| `MSSQL_SERVER`, `MSSQL_PORT`, `MSSQL_DATABASE` (defecto `DataRetail360_Demo`) | Destino SQL Server |
+| `MSSQL_AUTH` (`sql` o `windows`), `MSSQL_USER`, `MSSQL_PASSWORD` | Autenticación SQL Server |
+| `MSSQL_DRIVER`, `MSSQL_TRUST_CERT` | Driver ODBC y confianza en el certificado local |
+| `DATARETAIL_HOME` | Workspace de la corrida (defecto: directorio actual) |
+| `DBT_PROJECT_DIR`, `DBT_EXECUTABLE` | Proyecto dbt y ejecutable (venv separado) |
 
-- `EP3_DataRetail360.ipynb`: explicación, orquestación, análisis y evidencia principal.
-- `dataretail/config.py`: rutas desde el repositorio, conexiones y resolución de dbt.
-- `dataretail/contracts.py`: contrato de columnas compartido.
-- `dataretail/demo.py` y `start.py`: generación e inicialización exclusiva de la demo.
-- `dataretail/execute.py`: ejecución completa y guardado del notebook.
-- `snowflake.py` y `pipeline_logging.py`: jerarquías y seguimiento del pipeline.
-- `dbt/`: modelos, perfil configurable y pruebas de los cuatro marts.
-- `Dockerfile`, `compose.yaml`: infraestructura reproducible y comprobaciones de salud.
-- `requirements.txt`: dependencias analíticas fijadas; dbt tiene entorno separado en `/opt/dbt`.
-- `PLAN.md`: alcance y criterios de aceptación de la portabilidad.
+El pipeline crea y recarga objetos en la base destino: usar una base **dedicada**,
+no un DWH compartido.
 
-Para un entorno externo administrado por el usuario, el notebook admite `PGHOST`,
-`PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `MSSQL_SERVER`, `MSSQL_PORT`,
-`MSSQL_DATABASE`, `MSSQL_AUTH` (`sql` o `windows`), `MSSQL_USER`, `MSSQL_PASSWORD`,
-`MSSQL_DRIVER`, `MSSQL_TRUST_CERT` y `DBT_EXECUTABLE`. Se requiere el mismo contrato
-SQL/CSV/Excel y una base destino creada previamente. El inicializador se niega a
-sembrar bases distintas de `dataretail_demo` y `DataRetail360_Demo`.
-El modo Docker usa autenticación SQL; el modo Windows integrado es opcional.
-Las cargas demo usan SQLAlchemy/pyodbc; bcp solo se habilita en Windows integrado.
+## Estructura
 
-El notebook crea y recarga objetos analíticos del destino configurado. Usar una base
-dedicada. No apuntarlo a un DWH compartido sin revisar ese alcance.
+```text
+src/dataretail360/
+  cli.py, pipeline.py, context.py, settings.py   entrada, orquestación, configuración
+  contracts.py                                    contrato de columnas de las fuentes
+  bronze.py, normalize.py, quality.py, silver.py  extracción, limpieza y calidad
+  scd.py, snowflake.py, dimensions.py, facts.py   modelo dimensional
+  warehouse/                                      DDL, marts, dbt y publicación atómica
+  gold.py, analysis.py, dictionary.py             exportaciones, análisis, diccionarios
+  verification.py, closing.py                     controles, benchmark y conclusiones
+  observability.py, report.py                     logging JSONL y reporte Markdown
+  seed/                                           dataset demo y paquetes portables
+dbt/                 modelos y pruebas de los 4 marts
+tests/unit/          pruebas unitarias
+requirements/        dependencias fijadas (pipeline, dev, dbt)
+Dockerfile, compose.yaml
+```
+
+## Persistencia y reinicio
+
+Compose usa volúmenes para PostgreSQL, SQL Server y el workspace. `docker compose
+stop`/`down` los conservan. Para empezar desde cero:
+
+```sh
+docker compose down --volumes   # elimina bases, historia SCD y resultados
+docker compose up --build pipeline
+```
+
+Las contraseñas por defecto de `.env.example` son públicas y solo para la demo local.
+Las bases no exponen puertos al host. No cambiar contraseñas con volúmenes existentes
+esperando que roten solas.
 
 ## Diagnóstico
 
-`docker compose ps` muestra el estado. Consultar `docker compose logs postgres`,
-`docker compose logs sqlserver` y `docker compose logs notebook` para fallos de
-arranque. Si el motor Docker no responde, iniciar Docker Desktop con contenedores
-Linux. Si el puerto 8889 está ocupado, cambiar `NOTEBOOK_PORT` en `.env` por un
-puerto libre y ejecutar `docker compose up -d`. Usar ese mismo puerto en el navegador. No cambiar las contraseñas del archivo `.env` esperando que los volúmenes
-existentes roten sus credenciales automáticamente.
-
-Durante el procesamiento, `logs/` contiene eventos legibles y JSONL; los artefactos
-dbt quedan en `artifacts/dbt/<publicación>/`. El notebook informa errores y registra
-la limpieza de candidatos. Una interrupción abrupta puede dejar candidatos huérfanos.
-
-## Validación realizada
-
-El 2 de noviembre de 2026 (America/Santiago) se construyó la imagen y se ejecutó
-el notebook completo en Docker Linux x86-64 con PostgreSQL 17 y SQL Server 2022.
-Las 32 celdas de código terminaron sin errores: 37 pruebas Python, 35 controles
-internos y 58 pruebas dbt aprobadas en ambas publicaciones. La prueba adversa
-rechazó el candidato alterado y conservó los resultados publicados.
-La evidencia local se guardó en
-`artifacts/demo-validation/EP3_DataRetail360.ejecutado.ipynb` (excluida de Git).
+- `docker compose ps -a` y `docker compose logs seed|pipeline|sqlserver|postgres`.
+- `docker compose run --rm pipeline doctor` comprueba conexiones y dbt.
+- Cada corrida elimina sus propios esquemas candidatos `stage_*`/`dbt_*`, también
+  cuando falla. Una interrupción abrupta (p. ej. matar el contenedor) puede dejarlos
+  huérfanos; no afectan lo publicado y se pueden borrar a mano.
