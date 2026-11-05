@@ -58,3 +58,6 @@ logs-demo/
 *.egg-info/
 build/
 dist/
+
+# Estado local de corridas del pipeline
+workspace/

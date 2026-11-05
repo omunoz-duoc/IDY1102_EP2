@@ -1,3 +1,4 @@
+# Entorno dbt aislado del runtime del pipeline. Generado desde: dbt-core==1.12.6, dbt-sqlserver[pyodbc]==1.12.1
 agate==1.9.1
 annotated-types==0.8.0
 attrs==26.1.0
