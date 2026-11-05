@@ -56,6 +56,28 @@ def cmd_diagram(args) -> int:
     return 0
 
 
+def cmd_seed(args) -> int:
+    """Prepara las fuentes del pipeline (PostgreSQL + CSV + Excel) y la base destino."""
+    from pathlib import Path
+    from .seed import bootstrap
+    if args.action == 'demo':
+        bootstrap.seed_demo(replace=args.replace)
+    elif args.action == 'export':
+        bootstrap.export_bundle(Path(args.path))
+    elif args.action == 'load':
+        bootstrap.load_bundle(Path(args.path), replace=args.replace)
+    elif args.action == 'verify':
+        manifest = bootstrap.verify_bundle(Path(args.path))
+        print(f'Paquete íntegro: {len(manifest["tables"])} tablas y {len(manifest["files"])} archivos.')
+    elif args.action == 'none':
+        created = bootstrap.ensure_target_database()
+        print('Fuentes sin cambios; base destino ' + ('creada.' if created else 'existente.'))
+    elif args.action == 'contract':
+        from .report import markdown_table
+        print(markdown_table(bootstrap.contract_report(), max_rows=None))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog='dataretail360', description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
@@ -66,6 +88,20 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument('--skip-verify', action='store_true',
                      help='Omitir la segunda publicación, sondas de rollback/dbt y benchmark.')
     run.set_defaults(func=cmd_run)
+    seed = sub.add_parser('seed', help='Preparar las fuentes de entrada del pipeline.')
+    seed_sub = seed.add_subparsers(dest='action', required=True)
+    demo = seed_sub.add_parser('demo', help='Sembrar el dataset sintético determinista (idempotente).')
+    demo.add_argument('--replace', action='store_true', help='Reemplazar fuentes existentes.')
+    export = seed_sub.add_parser('export', help='Congelar las fuentes actuales en un paquete portable.')
+    export.add_argument('path', help='Carpeta vacía de destino del paquete.')
+    load = seed_sub.add_parser('load', help='Reconstruir las fuentes desde un paquete.')
+    load.add_argument('path', help='Carpeta del paquete (con manifest.json).')
+    load.add_argument('--replace', action='store_true', help='Reemplazar fuentes existentes.')
+    verify = seed_sub.add_parser('verify', help='Verificar integridad (SHA256) y completitud de un paquete.')
+    verify.add_argument('path')
+    seed_sub.add_parser('none', help='No sembrar; solo asegurar que exista la base destino.')
+    seed_sub.add_parser('contract', help='Mostrar el contrato de entrada requerido.')
+    seed.set_defaults(func=cmd_seed)
     diagram = sub.add_parser('diagram', help='Generar la matriz de bus del modelo dimensional (PNG).')
     diagram.add_argument('output', nargs='?', default='modelo_bus_matrix.png')
     diagram.set_defaults(func=cmd_diagram)

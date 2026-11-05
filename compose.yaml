@@ -55,11 +55,24 @@ services:
       retries: 40
       start_period: 30s
 
+  # Arranque de fuentes: dataset sintético idempotente. Si el origen ya tiene datos (p. ej. cargados
+  # con `seed load`), los conserva sin cambios. DATARETAIL_SEED=none solo asegura la base destino.
+  seed:
+    <<: *task
+    command: ["seed", "${DATARETAIL_SEED:-demo}"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sqlserver:
+        condition: service_healthy
+
   # Pipeline completo: extracción → Bronze/Silver → DWH → 4 marts (dbt) → Gold → controles y reporte.
   pipeline:
     <<: *task
     command: ["run"]
     depends_on:
+      seed:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       sqlserver:

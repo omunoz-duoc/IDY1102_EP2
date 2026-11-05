@@ -40,6 +40,20 @@ class BronzeSnapshot:
         return pd.Timestamp(self.controls['config_generacion'].set_index('parametro').loc['fecha_fin', 'valor'])
 
 
+TEXT_TYPES = {'text', 'character varying', 'character'}
+
+
+def order_clause(name: str, key: list[str], schema: pd.DataFrame) -> str:
+    """Orden total y reproducible: clave natural, luego el resto del contrato; texto con COLLATE "C".
+
+    Con claves duplicadas (datos reales con errores) el orden por clave sola no es determinista
+    y cambiaría `_src_row` y el hash Bronze entre máquinas o ejecuciones.
+    """
+    types = schema.loc[schema.table_name.eq(name)].set_index('column_name').data_type
+    columns = key + [c for c in CONTRACT[name] if c not in key]
+    return ','.join(f'"{c}" COLLATE "C"' if types.get(c) in TEXT_TYPES else f'"{c}"' for c in columns)
+
+
 def validate_columns(name: str, frame: pd.DataFrame) -> None:
     """Contrato de columnas compartido por SQL, CSV y Excel; la calidad se valida en Silver."""
     if frame.columns.duplicated().any():
@@ -115,7 +129,8 @@ def _extract(ctx: RunContext):
                                 if not set(CONTRACT[name]).issubset(cols):
                                     raise ValueError(f'Contrato roto en SQL: {name}')
                                 # Nombres de tabla y claves de orden proceden de listas fijas.
-                                frame = pd.read_sql(text(f'SELECT * FROM {RAW_SCHEMA}.{name} ORDER BY ' + ','.join(key)), conn)
+                                frame = pd.read_sql(text(f'SELECT * FROM {RAW_SCHEMA}.{name} ORDER BY '
+                                                         + order_clause(name, key, schema)), conn)
                                 file_meta = {'sha256_archivo': '', 'bytes_archivo': 0, 'original_bronze': ''}
                             else:
                                 frame, file_meta = file_inputs[name]
