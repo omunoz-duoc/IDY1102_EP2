@@ -1,6 +1,4 @@
 """Contexto de una corrida: identificador, rutas, logger, conexiones, manifiesto y reporte.
-
-Reemplaza las variables globales del notebook (RUN_ID, LOG, PG, DW, DATA, manifest).
 """
 from __future__ import annotations
 

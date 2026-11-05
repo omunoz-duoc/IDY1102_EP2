@@ -1,7 +1,7 @@
 """Configuración del pipeline: rutas de estado, conexiones y ejecutable dbt.
 
 Sin efectos secundarios al importar. Las credenciales provienen del entorno (o de `.env`),
-nunca del código. Los nombres de variables son los mismos del notebook original.
+nunca del código (variables estándar PG* y MSSQL_*).
 """
 from __future__ import annotations
 

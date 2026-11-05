@@ -1,4 +1,4 @@
-"""Orquestación de extremo a extremo, en el mismo orden que el notebook original.
+"""Orquestación de extremo a extremo.
 
 PostgreSQL (14) + CSV + Excel → Bronze → Silver → dimensiones SCD/snowflake → hechos →
 candidatos + dbt → promoción atómica DWH + 4 marts → Gold → análisis, pruebas y reporte.
@@ -82,7 +82,7 @@ def publish(ctx: RunContext, state: PipelineState) -> PipelineState:
 
 
 def run(ctx: RunContext, verify: bool = True) -> PipelineState:
-    """Equivalente a "Run All" del notebook. `verify=False` omite la segunda publicación y las sondas."""
+    """Corrida completa. `verify=False` omite la segunda publicación y las sondas."""
     from .analysis import run_analysis
     from .closing import benchmark, conclusions
     from .dictionary import write_dictionaries

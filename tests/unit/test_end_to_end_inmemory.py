@@ -1,7 +1,7 @@
 """Cadena completa Silver → dimensiones → hechos con el dataset sintético, sin bases de datos.
 
-Usa los mismos lectores textuales de CSV/Excel que Bronze. Las cifras esperadas son las de la
-ejecución verificada del notebook original sobre el mismo dataset.
+Usa los mismos lectores textuales de CSV/Excel que Bronze. Las cifras esperadas son las de una
+ejecución completa verificada sobre el mismo dataset.
 """
 import io
 

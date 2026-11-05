@@ -1,4 +1,4 @@
-"""Reporte de ejecución en Markdown: reemplaza las salidas `display()` del notebook.
+"""Reporte de ejecución en Markdown.
 
 Cada etapa agrega texto y tablas; al final se escribe `artifacts/reports/<run_id>/report.md`.
 No requiere dependencias adicionales (el render de tablas es propio).

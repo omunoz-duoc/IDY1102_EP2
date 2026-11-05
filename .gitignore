@@ -6,10 +6,10 @@
 *.key
 config.local.*
 
-# Datos, respaldos y resultados de ejecución
+# Estado de corridas y datos (nunca versionar fuentes ni paquetes de semilla)
+workspace/
+bundle/
 data/
-output/
-outputs/
 artifacts/
 logs/
 tmp/
@@ -27,37 +27,27 @@ tmp/
 # Entornos y cachés
 .venv/
 venv/
+.dbt/
 __pycache__/
 *.pyc
-.ipynb_checkpoints/
 .pytest_cache/
 .DS_Store
 Thumbs.db
 
-# Archivos IA
-*.md
-!README.md
+# Empaquetado
+*.egg-info/
+build/
+dist/
 
-# dbt: entorno aislado y artefactos regenerables
-.venv-dbt/
+# dbt: artefactos regenerables
 dbt/target/
 dbt/logs/
 dbt/dbt_packages/
 dbt/.user.yml
 
+# Archivos IA
+*.md
+!README.md
+
 # informe
 informe/
-# Validación local y documentación portable
-.venv-portable/
-!PLAN.md
-*.ejecutado.ipynb
-artifacts-demo/
-logs-demo/
-
-# Empaquetado del pipeline
-*.egg-info/
-build/
-dist/
-
-# Estado local de corridas del pipeline
-workspace/

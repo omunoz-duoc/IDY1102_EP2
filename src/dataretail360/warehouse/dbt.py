@@ -84,7 +84,7 @@ def _source_label(path: Path, home: Path) -> str:
 
 
 class DbtRunner:
-    """Estado por corrida (`runs`) equivalente a DBT_RUNS del notebook."""
+    """dbt sobre esquemas candidatos; guarda el estado de cada corrida en `runs`."""
 
     def __init__(self, ctx, cutoff_key: int):
         self.ctx = ctx

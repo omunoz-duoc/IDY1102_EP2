@@ -1,4 +1,4 @@
-"""SCD 1/2/3, búsqueda temporal y demostraciones controladas del notebook."""
+"""SCD 1/2/3, búsqueda temporal y demostraciones controladas."""
 import pandas as pd
 import pytest
 
