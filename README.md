@@ -14,23 +14,146 @@ conexión a Internet para la primera construcción y una máquina **x86-64**.
 Asignar aproximadamente 6 GB de RAM a Docker como punto de partida para esta demo.
 SQL Server Developer se utiliza para desarrollo y evaluación.
 
-Desde la carpeta que contiene `compose.yaml`:
+En Windows y macOS, abrir Docker Desktop y esperar a que el motor esté funcionando.
+En Linux, comprobar que Docker Engine esté iniciado y accesible desde la terminal.
+No es necesario instalar Python, ODBC, PostgreSQL, SQL Server ni dbt en el host.
+
+Elegir **una** de las rutas siguientes según la terminal. Ambas configuran el
+puerto **8889** del equipo para acceder al puerto **8888** interno del contenedor.
+Los pasos que crean `.env` son para un clon nuevo; si ya existe, conservarlo y
+editar únicamente `NOTEBOOK_PORT=8889`.
+
+### Ruta A: Windows con PowerShell
+
+1. Clonar el repositorio y entrar en la carpeta:
+
+   ```powershell
+   git clone https://github.com/omunoz-duoc/IDY1102_EP2.git
+   cd IDY1102_EP2
+   ```
+
+2. Crear la configuración local y seleccionar el puerto 8889:
+
+   ```powershell
+   Copy-Item .env.example .env
+   (Get-Content .env) -replace '^NOTEBOOK_PORT=.*$', 'NOTEBOOK_PORT=8889' | Set-Content .env -Encoding utf8
+   ```
+
+3. Construir e iniciar todos los servicios:
+
+   ```powershell
+   docker compose up --build -d
+   docker compose ps
+   docker compose logs -f notebook
+   ```
+
+   La primera construcción puede tardar varios minutos. Esperar a que PostgreSQL
+   y SQL Server estén `healthy` y aparezca `Jupyter Server ... is running at`.
+   Presionar **Ctrl+C** para salir del seguimiento de logs; los contenedores siguen funcionando.
+
+4. Obtener el token y abrir el notebook:
+
+   ```powershell
+   docker compose exec notebook jupyter server list
+   Start-Process "http://localhost:8889/lab/tree/EP3_DataRetail360.ipynb"
+   ```
+
+### Ruta B: macOS o Linux con Bash
+
+Los comandos de esta ruta sirven para Bash en ambos sistemas. El conjunto requiere
+x86-64 por SQL Server; no se garantiza funcionamiento en Apple Silicon/ARM mediante
+emulación. Consultar la [documentación oficial de SQL Server en Docker](https://learn.microsoft.com/en-us/sql/linux/quickstart-install-connect-docker?view=sql-server-ver17).
+La ejecución integral de este proyecto se validó en Docker Linux x86-64; no se ha
+validado por separado en macOS.
+
+1. Clonar el repositorio y entrar en la carpeta:
+
+   ```bash
+   git clone https://github.com/omunoz-duoc/IDY1102_EP2.git
+   cd IDY1102_EP2
+   ```
+
+2. Crear la configuración con el puerto 8889. Este comando funciona con `sed`
+   tanto en macOS como en Linux:
+
+   ```bash
+   sed 's/^NOTEBOOK_PORT=.*/NOTEBOOK_PORT=8889/' .env.example > .env
+   ```
+
+3. Construir e iniciar todos los servicios:
+
+   ```bash
+   docker compose up --build -d
+   docker compose ps
+   docker compose logs -f notebook
+   ```
+
+   Esperar a que PostgreSQL y SQL Server estén `healthy` y aparezca
+   `Jupyter Server ... is running at`. Presionar **Ctrl+C** para salir del
+   seguimiento de logs; los contenedores siguen funcionando.
+
+4. Obtener el token:
+
+   ```bash
+   docker compose exec notebook jupyter server list
+   ```
+
+5. Abrir el notebook usando el comando correspondiente al sistema:
+
+   **macOS:**
+
+   ```bash
+   open "http://localhost:8889/lab/tree/EP3_DataRetail360.ipynb"
+   ```
+
+   **Linux con escritorio:**
+
+   ```bash
+   xdg-open "http://localhost:8889/lab/tree/EP3_DataRetail360.ipynb"
+   ```
+
+   También se puede pegar [el enlace del notebook](http://localhost:8889/lab/tree/EP3_DataRetail360.ipynb)
+   directamente en el navegador del equipo donde se ejecuta Docker.
+
+### Acceso y ejecución de las celdas
+
+1. En la salida de `jupyter server list`, copiar el valor que sigue a `token=`.
+   Introducirlo en la pantalla de acceso de Jupyter. El comando muestra el puerto
+   **interno 8888**; en el navegador mantener **8889**.
+2. Abrir `EP3_DataRetail360.ipynb` y seleccionar **Python 3 (ipykernel)** si solicita un kernel.
+3. Seleccionar **Run → Run All Cells**. No iniciar otra corrida mientras esté en ejecución.
+4. Esperar hasta que termine y aparezcan las conclusiones. Guardar mediante
+   **File → Save Notebook** o el botón de guardar.
+
+Las bases y las fuentes sintéticas se preparan automáticamente. Las ediciones
+realizadas en Jupyter se guardan en el volumen Docker; para copiarlas al repositorio
+local, seguir la sección **Verificación y exportación**.
+
+### Detener y volver a iniciar
+
+Desde la carpeta del repositorio, en PowerShell o Bash, detener sin borrar datos:
 
 ```sh
-docker compose up --build -d
+docker compose stop
+```
+
+Para volver a iniciar todos los servicios:
+
+```sh
+docker compose up -d
 docker compose logs -f notebook
 ```
 
-Esperar a que PostgreSQL y SQL Server estén saludables y aparezca el enlace de
-Jupyter con token. Abrir `http://localhost:8888`, introducir ese token y abrir
-`EP3_DataRetail360.ipynb`. Seleccionar **Run → Run All Cells** y guardar el notebook.
-No ejecutar dos corridas simultáneas contra el mismo destino.
+Cuando Jupyter esté listo, salir de los logs con **Ctrl+C** y obtener el token:
 
-La primera construcción descarga imágenes, ODBC y dependencias. No instalar Python,
-ODBC, PostgreSQL, SQL Server ni dbt en el host. Tampoco es necesario crear `.env`.
-Para personalizar el puerto o las contraseñas demo, copiar `.env.example` a `.env`
-antes del primer inicio. Las variables existentes del laboratorio no cambian los
-hosts ni las bases dedicadas que define Compose.
+```sh
+docker compose exec notebook jupyter server list
+```
+
+Abrir nuevamente [el notebook](http://localhost:8889/lab/tree/EP3_DataRetail360.ipynb).
+El token puede cambiar cuando se reinicia o recrea el contenedor.
+
+### Configuración de la demo
 
 Solo Jupyter expone un puerto, ligado a `127.0.0.1`; las bases quedan en la red
 interna de Compose. El token de Jupyter sigue habilitado. Las contraseñas por
@@ -38,9 +161,10 @@ defecto son públicas y exclusivas de esta demo local. No usar esta configuraci�
 como despliegue de producción. ODBC cifra la conexión y confía en el certificado
 local del contenedor.
 
-SQL Server limita la portabilidad del conjunto a x86-64. Windows/Linux con Docker
-Linux son el objetivo; no se promete funcionamiento en Apple Silicon/ARM mediante
-emulación. Véase la [documentación oficial de SQL Server en Docker](https://learn.microsoft.com/en-us/sql/linux/quickstart-install-connect-docker?view=sql-server-ver17).
+Sin `.env`, Compose utiliza el puerto 8888; las rutas anteriores lo cambian a 8889.
+Para personalizar las contraseñas demo, editar `.env` antes del primer inicio.
+Las variables existentes del laboratorio no cambian los hosts ni las bases
+dedicadas que define Compose.
 
 ## Datos y resultados
 
@@ -160,8 +284,8 @@ dedicada. No apuntarlo a un DWH compartido sin revisar ese alcance.
 `docker compose ps` muestra el estado. Consultar `docker compose logs postgres`,
 `docker compose logs sqlserver` y `docker compose logs notebook` para fallos de
 arranque. Si el motor Docker no responde, iniciar Docker Desktop con contenedores
-Linux. Si el puerto 8888 está ocupado, ajustar `NOTEBOOK_PORT` antes de recrear el
-servicio. No cambiar las contraseñas del archivo `.env` esperando que los volúmenes
+Linux. Si el puerto 8889 está ocupado, cambiar `NOTEBOOK_PORT` en `.env` por un
+puerto libre y ejecutar `docker compose up -d`. Usar ese mismo puerto en el navegador. No cambiar las contraseñas del archivo `.env` esperando que los volúmenes
 existentes roten sus credenciales automáticamente.
 
 Durante el procesamiento, `logs/` contiene eventos legibles y JSONL; los artefactos
