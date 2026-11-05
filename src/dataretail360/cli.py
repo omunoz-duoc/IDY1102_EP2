@@ -40,11 +40,19 @@ def cmd_run(args) -> int:
     from .pipeline import run
     ctx = RunContext.create(run_id=args.run_id)
     try:
-        run(ctx)
+        run(ctx, verify=not args.skip_verify)
     finally:
         path = ctx.report.save(ctx.report_path)
         ctx.log.info('Reporte de la corrida: %s', path)
         ctx.close()
+    return 0
+
+
+def cmd_diagram(args) -> int:
+    from pathlib import Path
+    from .analysis import bus_matrix_figure
+    Path(args.output).write_bytes(bus_matrix_figure())
+    print(f'Matriz de bus escrita en {args.output}')
     return 0
 
 
@@ -55,7 +63,12 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.set_defaults(func=cmd_doctor)
     run = sub.add_parser('run', help='Ejecutar el pipeline completo (extracción → DWH → marts → Gold).')
     run.add_argument('--run-id', help='Identificador de corrida (por defecto, UUID aleatorio).')
+    run.add_argument('--skip-verify', action='store_true',
+                     help='Omitir la segunda publicación, sondas de rollback/dbt y benchmark.')
     run.set_defaults(func=cmd_run)
+    diagram = sub.add_parser('diagram', help='Generar la matriz de bus del modelo dimensional (PNG).')
+    diagram.add_argument('output', nargs='?', default='modelo_bus_matrix.png')
+    diagram.set_defaults(func=cmd_diagram)
     return parser
 
 

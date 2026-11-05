@@ -12,7 +12,7 @@ from sqlalchemy import text
 
 from . import bronze, dimensions as dim, facts as fct, gold, silver as slv
 from .context import RunContext
-from .observability import event, pipeline_step
+from .observability import pipeline_step
 from .quality import QualityAuditor
 from .settings import dw_database
 
@@ -81,12 +81,21 @@ def publish(ctx: RunContext, state: PipelineState) -> PipelineState:
     return state
 
 
-def run(ctx: RunContext) -> PipelineState:
+def run(ctx: RunContext, verify: bool = True) -> PipelineState:
+    """Equivalente a "Run All" del notebook. `verify=False` omite la segunda publicación y las sondas."""
+    from .analysis import run_analysis
+    from .closing import benchmark, conclusions
+    from .dictionary import write_dictionaries
+    from .verification import Verifier
     check_connections(ctx)
     state = build(ctx)
     state = publish(ctx, state)
-    ctx.manifest.setdefault('observability', {}).update({'status': 'COMPLETED'})
-    ctx.write_manifest()
-    event(ctx.log, 'run_completed', 'Pipeline completo: publicación y exportaciones finalizadas.',
-          artifact=f'logs/{ctx.run_id}.jsonl')
+    analysis = run_analysis(ctx, state)
+    write_dictionaries(ctx, state.warehouse.all_frames, state.mart_frames)
+    if verify:
+        state.checks = Verifier(ctx, state, analysis).run()
+        benchmark(ctx, state)
+    else:
+        state.checks = list(state.bronze.checks)
+    conclusions(ctx, state, analysis, state.checks)
     return state
