@@ -1,14 +1,14 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
-import io,json,logging,os,subprocess,sys,time,unittest
-from pipeline_logging import (configure_logging,pipeline_step,event,quality_event,
+import io,json,logging,os,subprocess,sys,tempfile,time,unittest
+from dataretail360.observability import (configure_logging,pipeline_step,event,quality_event,
     trace_step,run_logged_command,CommandFailed,insert_progress,report_data_warnings)
 
 
 class LoggingTest(unittest.TestCase):
     def setUp(self):
-        base=Path.cwd()/'tmp'/'logging-tests';base.mkdir(parents=True,exist_ok=True)
+        base=Path(tempfile.gettempdir())/'dr360-logging-tests';base.mkdir(parents=True,exist_ok=True)
         self.temp=TemporaryDirectory(dir=base);self.root=Path(self.temp.name);self.output=io.StringIO()
         self.log=configure_logging(self.root,'TEST',stream=self.output,secrets=['private-test-password'],
             heartbeat_seconds=.015,slow_seconds=.035)
@@ -140,7 +140,7 @@ class LoggingTest(unittest.TestCase):
         engine.dispose()
 
     def test_subprocess_interruption_stops_command(self):
-        with patch('pipeline_logging.queue.Queue.get',side_effect=KeyboardInterrupt):
+        with patch('dataretail360.observability.queue.Queue.get',side_effect=KeyboardInterrupt):
             with self.assertRaises(KeyboardInterrupt):self.command('import time;time.sleep(20)',timeout=5)
         self.assertEqual(self.records()[-1]['event'],'step_cancelled')
 

@@ -1,4 +1,4 @@
-"""Observabilidad del notebook: progreso legible, eventos JSONL y errores sin datos de filas.
+"""Observabilidad del pipeline: progreso legible, eventos JSONL y errores sin datos de filas.
 
 Solo biblioteca estándar. Los logs informan actividad, no consultan ni modifican datos.
 Un heartbeat confirma que el proceso Python sigue vivo; no certifica avance del servidor SQL.
@@ -77,7 +77,7 @@ class _Formatter(logging.Formatter):
 
 
 def configure_logging(root,run_id,stream=None,secrets=(),heartbeat_seconds=30,slow_seconds=300):
-    """Reejecutable: reemplaza handlers propios y evita líneas duplicadas en Jupyter."""
+    """Reejecutable: reemplaza handlers propios y evita líneas duplicadas."""
     folder=Path(root)/'logs';folder.mkdir(parents=True,exist_ok=True)
     logger=logging.getLogger('dr360');logger.setLevel(logging.DEBUG);logger.propagate=False
     for handler in logger.handlers[:]:logger.removeHandler(handler);handler.close()

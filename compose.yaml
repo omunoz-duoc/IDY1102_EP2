@@ -1,5 +1,6 @@
-name: dataretail360-demo
+name: dataretail360
 
+# Configuración compartida por las tareas del pipeline. Contraseñas demo públicas: solo uso local.
 x-runtime: &runtime
   PGHOST: postgres
   PGPORT: "5432"
@@ -13,7 +14,15 @@ x-runtime: &runtime
   MSSQL_USER: sa
   MSSQL_PASSWORD: ${DEMO_SQL_PASSWORD:-DemoSqlServer_360!}
   MSSQL_TRUST_CERT: "yes"
-  DATARETAIL_DEMO: "1"
+
+x-task: &task
+  build: .
+  image: dataretail360-pipeline:latest
+  platform: linux/amd64
+  environment: *runtime
+  volumes:
+    # Por defecto un volumen Docker; DATARETAIL_WORKSPACE=./workspace lo publica en el host.
+    - ${DATARETAIL_WORKSPACE:-workspace}:/workspace
 
 services:
   postgres:
@@ -46,15 +55,24 @@ services:
       retries: 40
       start_period: 30s
 
-  notebook:
-    build: .
-    platform: linux/amd64
-    environment: *runtime
-    ports:
-      - "127.0.0.1:${NOTEBOOK_PORT:-8888}:8888"
-    volumes:
-      - workspace:/app
+  # Arranque de fuentes: dataset sintético idempotente. Si el origen ya tiene datos (p. ej. cargados
+  # con `seed load`), los conserva sin cambios. DATARETAIL_SEED=none solo asegura la base destino.
+  seed:
+    <<: *task
+    command: ["seed", "${DATARETAIL_SEED:-demo}"]
     depends_on:
+      postgres:
+        condition: service_healthy
+      sqlserver:
+        condition: service_healthy
+
+  # Pipeline completo: extracción → Bronze/Silver → DWH → 4 marts (dbt) → Gold → controles y reporte.
+  pipeline:
+    <<: *task
+    command: ["run"]
+    depends_on:
+      seed:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       sqlserver:

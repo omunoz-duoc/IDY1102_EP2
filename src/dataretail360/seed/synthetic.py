@@ -1,11 +1,18 @@
-"""Dataset pequeño, determinista y ficticio; nunca lee los datos del laboratorio."""
+"""Dataset sintético pequeño, determinista y ficticio (nunca lee datos reales).
+
+3 sucursales, 6 productos, 8 identidades ficticias, 64 documentos de venta (ene–sep 2026),
+5 devoluciones (una posterior al corte), 36 cortes de inventario, campaña, sesiones, envíos y
+reposición. Incluye compras anónimas, meses sin compras, envíos sin consentimiento y una fecha
+Excel ambigua para ejercitar las reglas. Los correos usan `example.invalid`.
+"""
 from datetime import datetime
 from pathlib import Path
 import pandas as pd
-from .contracts import CONTRACT
+from ..contracts import CONTRACT, FILE_SOURCES, LEGACY_SHEET
 
 VERSION = 'demo-v1'
-SHEET = 'legacy_reporte_ventas_xlsx_2026'
+SHEET = LEGACY_SHEET
+CUTOFF = '2026-09-30'
 
 
 def frames():
@@ -104,8 +111,26 @@ def frames():
 
 
 def write_files(root, dataset):
-    raw = Path(root)/'data'/'raw'
-    (raw/'marketing').mkdir(parents=True, exist_ok=True)
-    (raw/'legacy').mkdir(parents=True, exist_ok=True)
-    dataset['mkt_campanias'].to_csv(raw/'marketing'/'campanias.csv', index=False, encoding='utf-8-sig')
-    dataset['legacy_reporte_ventas_xlsx'].to_excel(raw/'legacy'/'reportes_ventas.xlsx', index=False, sheet_name=SHEET)
+    """Escribe las dos fuentes de archivo en las rutas del contrato, relativas a `root`."""
+    csv_path = Path(root) / FILE_SOURCES['mkt_campanias']['ubicacion']
+    xlsx_path = Path(root) / FILE_SOURCES['legacy_reporte_ventas_xlsx']['ubicacion']
+    for path in (csv_path, xlsx_path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+    dataset['mkt_campanias'].to_csv(csv_path, index=False, encoding='utf-8-sig')
+    dataset['legacy_reporte_ventas_xlsx'].to_excel(xlsx_path, index=False, sheet_name=SHEET)
+
+
+def controls():
+    """Metadatos de `dr360_control`: corte de cobertura, KPI por área y problemas inyectados."""
+    return {
+        'config_generacion': pd.DataFrame([{'parametro': 'fecha_fin', 'valor': CUTOFF},
+                                           {'parametro': 'dataset', 'valor': VERSION}]),
+        'definiciones_kpi_por_area': pd.DataFrame([
+            {'area': area, 'indicador': metric, 'definicion': definition} for area, metric, definition in [
+                ('Comercial', 'Venta neta', 'Ventas netas menos devoluciones netas'),
+                ('Operaciones', 'Stock', 'Último corte común'),
+                ('Marketing', 'Conversión', 'Conversiones entregadas / envíos entregados'),
+                ('Clientes', 'Actividad', 'Compras en seis meses calendario')]]),
+        'problemas_calidad_inyectados': pd.DataFrame([
+            {'tabla': 'legacy_reporte_ventas_xlsx', 'problema': 'Fecha ambigua', 'filas': 1},
+            {'tabla': 'mkt_envios_campania', 'problema': 'Sin consentimiento', 'filas': 4}])}

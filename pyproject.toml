@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dataretail360"
+version = "1.0.0"
+description = "DataRetail 360: pipeline PostgreSQL + CSV + Excel -> Bronze/Silver/Gold -> DWH SQL Server -> 4 data marts (dbt)."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Oscar Muñoz" }]
+# Rangos compatibles; las versiones exactas para reproducir están en requirements/pipeline.lock.txt.
+dependencies = [
+    "numpy>=2.2,<3",
+    "pandas>=2.2,<4",
+    "pyarrow>=18",
+    "SQLAlchemy>=2.0,<2.2",
+    "psycopg[binary]>=3.2,<4",
+    "pyodbc>=5.2,<6",
+    "openpyxl>=3.1,<4",
+    "python-dotenv>=1.0,<2",
+    "matplotlib>=3.9,<4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+dataretail360 = "dataretail360.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+addopts = "-ra"
