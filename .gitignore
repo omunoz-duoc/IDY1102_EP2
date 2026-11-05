@@ -53,3 +53,8 @@ informe/
 *.ejecutado.ipynb
 artifacts-demo/
 logs-demo/
+
+# Empaquetado del pipeline
+*.egg-info/
+build/
+dist/
